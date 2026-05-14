@@ -13,3 +13,42 @@ Expected production layout:
 The current C# scripts are staged in `Assets/Scripts/ZIKJ/`.
 
 Open this `unity/` folder in Unity Hub or create the Unity project here, then commit `Assets/`, `Packages/manifest.json`, and `ProjectSettings/`. Do not commit generated folders such as `Library/`, `Temp/`, `Obj/`, or builds.
+
+## First Playable Game: Infected
+
+Fast path:
+
+1. Open `C:\Users\Admin\Desktop\zikj\unity` in Unity Hub.
+2. In Unity, choose `ZIKJ > Create Infected Arena Scene`.
+3. Press Play.
+
+Manual path:
+
+1. Open `C:\Users\Admin\Desktop\zikj\unity` in Unity Hub.
+2. Create an empty scene named `InfectedArena`.
+3. Create an empty GameObject named `Bootstrap`.
+4. Add the `InfectedSceneBootstrap` component to it.
+5. Press Play.
+
+The bootstrapper creates the camera, track mesh, HUD, game manager, six karts, AI, safe zones, and the Infected rules loop automatically. This gives us a repeatable baseline scene before replacing runtime primitives with final art, projection assets, and real tracking input.
+
+Controls:
+
+- `WASD` or arrow keys to drive the cyan player kart.
+- Red karts are infected.
+- Green karts are immune after touching a safe zone.
+
+## Build
+
+The scene is included in Unity Build Settings. To make a local Windows build:
+
+1. Open the project in Unity.
+2. Choose `ZIKJ > Build Windows Infected`.
+
+The same build can be run from PowerShell:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.15f1\Editor\Unity.exe' -quit -batchmode -projectPath 'C:\Users\Admin\Desktop\zikj\unity' -executeMethod ZIKJBuild.BuildWindows
+```
+
+Local builds are written to `unity/Builds/Windows/` and are intentionally ignored by Git.

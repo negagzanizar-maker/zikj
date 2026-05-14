@@ -36,10 +36,12 @@ coverage/
 # Unity generated files
 *.csproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
 *.userprefs
+.vsconfig
 *.pidb
 *.booproj
 *.svd

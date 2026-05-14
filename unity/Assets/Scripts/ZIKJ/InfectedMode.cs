@@ -1,237 +1,407 @@
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
-// Ported 1-to-1 from modes/infected.html rules
 public class InfectedMode : MonoBehaviour
 {
     public static InfectedMode I { get; private set; }
 
-    [Header("Rules (match browser prototype)")]
-    public float roundDuration    = 180f;
-    public float infectionRadius  = 36  * 0.05f;   // 1.8 u
-    public float boostFactor      = 1.10f;
-    public float boostTime        = 5f;
-    public float immunityTime     = 3f;
-    public float zoneLifetime     = 8f;
-    public float zoneRadius       = 38  * 0.05f;   // 1.9 u
-    public float zoneSpawnMin     = 12f;
-    public float zoneSpawnMax     = 20f;
+    [Header("Rules")]
+    public float roundDuration = 180f;
+    public float infectionRadius = 36f * 0.05f;
+    public float boostFactor = 1.10f;
+    public float boostTime = 5f;
+    public float immunityTime = 3f;
+    public float zoneLifetime = 8f;
+    public float zoneRadius = 38f * 0.05f;
+    public float zoneSpawnMin = 12f;
+    public float zoneSpawnMax = 20f;
 
     [Header("References")]
     public GameObject safeZonePrefab;
 
-    // ── Per-kart state ───────────────────────────────────────────────────────
-
     class KartState
     {
-        public bool  infected;
+        public bool infected;
         public float immuneUntil;
         public float boostUntil;
-        public float totalInfTime;
+        public float totalInfectedTime;
     }
 
-    KartController[]           karts;
-    readonly Dictionary<int, KartState> state = new();
-
-    float roundTimer;
-    bool  running;
-    float nextZoneSpawn;
+    KartController[] karts;
+    readonly Dictionary<int, KartState> states = new();
     readonly List<GameObject> zones = new();
 
-    void Awake() => I = this;
+    float roundTimer;
+    bool running;
+    float nextZoneSpawn;
 
-    // ── Init (called by GameManager.Start) ───────────────────────────────────
+    public float RoundTimer => roundTimer;
+    public bool IsRunning => running;
+    public int TotalKarts => karts?.Length ?? 0;
+    public int CleanKarts
+    {
+        get
+        {
+            int count = 0;
+            foreach (var s in states.Values)
+                if (!s.infected) count++;
+            return count;
+        }
+    }
+    public int InfectedKarts => TotalKarts - CleanKarts;
+
+    void Awake()
+    {
+        if (I != null && I != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        I = this;
+    }
 
     public void Init(KartController[] allKarts)
     {
+        CleanupZones();
+
         karts = allKarts;
-        state.Clear();
-        foreach (var k in karts)
-            state[k.kartIndex] = new KartState();
+        states.Clear();
+        roundTimer = Mathf.Max(10f, roundDuration);
+        running = karts != null && karts.Length > 1;
 
-        // One random kart starts infected
-        Infect(karts[Random.Range(0, karts.Length)].kartIndex, -1);
+        if (!running)
+        {
+            Debug.LogError("InfectedMode needs at least two karts.");
+            return;
+        }
 
-        roundTimer    = roundDuration;
-        running       = true;
+        foreach (var kart in karts)
+        {
+            if (kart == null) continue;
+            states[kart.kartIndex] = new KartState();
+            kart.maxSpeedMul = 1f;
+            kart.steerMul = 1f;
+            kart.SetVisualColor(kart.kartColor);
+        }
+
+        int patientZero = Random.Range(0, karts.Length);
+        Infect(karts[patientZero].kartIndex, -1);
         nextZoneSpawn = Time.time + Random.Range(zoneSpawnMin, zoneSpawnMax);
+        InfectedHUD.I?.Refresh();
     }
-
-    // ── Main loop ────────────────────────────────────────────────────────────
 
     void Update()
     {
         if (!running) return;
 
-        roundTimer -= Time.deltaTime;
-        if (roundTimer <= 0f) { EndRound(); return; }
-
+        float dt = Time.deltaTime;
         float now = Time.time;
 
-        // Accumulate infection time + apply boost modifier
-        foreach (var k in karts)
+        roundTimer -= dt;
+        if (roundTimer <= 0f)
         {
-            var s = state[k.kartIndex];
-            if (s.infected)           s.totalInfTime += Time.deltaTime;
-            k.maxSpeedMul = (now < s.boostUntil) ? boostFactor : 1f;
+            EndRound();
+            return;
         }
 
-        // O(n²) infection proximity check
-        foreach (var a in karts)
-        {
-            if (!state[a.kartIndex].infected) continue;
-            foreach (var b in karts)
-            {
-                if (b == a) continue;
-                var bs = state[b.kartIndex];
-                if (bs.infected || now < bs.immuneUntil) continue;
-                if (Vector3.Distance(a.transform.position, b.transform.position) < infectionRadius)
-                    Infect(b.kartIndex, a.kartIndex);
-            }
-        }
+        UpdateKartTimersAndVisuals(dt, now);
+        CheckInfections(now);
 
-        // Safe zone spawning
         if (now >= nextZoneSpawn)
         {
             SpawnZone();
             nextZoneSpawn = now + Random.Range(zoneSpawnMin, zoneSpawnMax);
         }
 
-        UpdateAI();
+        UpdateAI(now);
     }
 
-    // ── Infection / immunity ─────────────────────────────────────────────────
-
-    void Infect(int victim, int infectorIdx)
+    void UpdateKartTimersAndVisuals(float dt, float now)
     {
-        var vs      = state[victim];
-        vs.infected = true;
-        if (infectorIdx >= 0)
-            state[infectorIdx].boostUntil = Time.time + boostTime;
+        foreach (var kart in karts)
+        {
+            if (kart == null || !states.TryGetValue(kart.kartIndex, out var state)) continue;
+
+            if (state.infected)
+                state.totalInfectedTime += dt;
+
+            kart.maxSpeedMul = now < state.boostUntil ? boostFactor : 1f;
+
+            if (state.infected)
+                kart.SetVisualColor(new Color(1f, 0.12f, 0.18f));
+            else if (now < state.immuneUntil)
+                kart.SetVisualColor(new Color(0.30f, 1f, 0.55f));
+            else
+                kart.SetVisualColor(kart.kartColor);
+        }
+    }
+
+    void CheckInfections(float now)
+    {
+        float radiusSq = infectionRadius * infectionRadius;
+
+        foreach (var infector in karts)
+        {
+            if (infector == null || !IsInfected(infector.kartIndex)) continue;
+
+            foreach (var victim in karts)
+            {
+                if (victim == null || victim == infector) continue;
+                if (!states.TryGetValue(victim.kartIndex, out var victimState)) continue;
+                if (victimState.infected || now < victimState.immuneUntil) continue;
+
+                Vector3 delta = victim.transform.position - infector.transform.position;
+                delta.y = 0f;
+
+                if (delta.sqrMagnitude <= radiusSq)
+                    Infect(victim.kartIndex, infector.kartIndex);
+            }
+        }
+    }
+
+    void Infect(int victimIdx, int infectorIdx)
+    {
+        if (!states.TryGetValue(victimIdx, out var victim)) return;
+        if (victim.infected) return;
+
+        victim.infected = true;
+        victim.immuneUntil = 0f;
+
+        if (infectorIdx >= 0 && states.TryGetValue(infectorIdx, out var infector))
+            infector.boostUntil = Time.time + boostTime;
+
         InfectedHUD.I?.Refresh();
     }
 
     public void GrantImmunity(int kartIdx)
     {
-        var s        = state[kartIdx];
-        s.infected   = false;
-        s.immuneUntil = Time.time + immunityTime;
+        if (!running || !states.TryGetValue(kartIdx, out var state)) return;
+
+        state.infected = false;
+        state.immuneUntil = Time.time + immunityTime;
+        EnsureInfectionExists(kartIdx);
         InfectedHUD.I?.Refresh();
     }
 
-    // ── Safe zones ───────────────────────────────────────────────────────────
+    void EnsureInfectionExists(int avoidKartIdx)
+    {
+        foreach (var state in states.Values)
+        {
+            if (state.infected) return;
+        }
+
+        KartController fallback = null;
+        foreach (var kart in karts)
+        {
+            if (kart == null) continue;
+            if (fallback == null) fallback = kart;
+            if (kart.kartIndex == avoidKartIdx || IsImmune(kart.kartIndex)) continue;
+
+            Infect(kart.kartIndex, -1);
+            return;
+        }
+
+        if (fallback != null)
+            Infect(fallback.kartIndex, -1);
+    }
 
     void SpawnZone()
     {
-        if (safeZonePrefab == null) return;
         Vector3 pos = WaypointCircuit.At(Random.value);
-        var go = Instantiate(safeZonePrefab, pos, Quaternion.identity);
-        go.GetComponent<SafeZone>().Init(this, zoneRadius, zoneLifetime);
+        GameObject go = safeZonePrefab != null
+            ? Instantiate(safeZonePrefab, pos, Quaternion.identity)
+            : CreateRuntimeSafeZone(pos);
+
+        if (!go.TryGetComponent(out SafeZone zone))
+            zone = go.AddComponent<SafeZone>();
+
+        zone.Init(this, zoneRadius, zoneLifetime);
         zones.Add(go);
     }
 
-    public void RemoveZone(GameObject go) => zones.Remove(go);
-
-    // ── AI behaviour update ──────────────────────────────────────────────────
-
-    void UpdateAI()
+    GameObject CreateRuntimeSafeZone(Vector3 pos)
     {
-        foreach (var k in karts)
+        var root = new GameObject("SafeZone");
+        root.transform.position = pos;
+        root.AddComponent<SphereCollider>();
+
+        var visual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        visual.name = "Visual";
+        visual.transform.SetParent(root.transform, false);
+        visual.transform.localScale = new Vector3(zoneRadius * 2f, 0.03f, zoneRadius * 2f);
+
+        var collider = visual.GetComponent<Collider>();
+        if (collider != null) Destroy(collider);
+
+        var renderer = visual.GetComponent<Renderer>();
+        if (renderer != null)
+            renderer.material = RuntimeMaterials.Make(new Color(0.20f, 1f, 0.45f, 0.8f));
+
+        return root;
+    }
+
+    public void RemoveZone(GameObject go)
+    {
+        zones.Remove(go);
+    }
+
+    void CleanupZones()
+    {
+        for (int i = zones.Count - 1; i >= 0; i--)
         {
-            if (k.isPlayer) continue;
-            var ai = k.GetComponent<KartAI>();
+            if (zones[i] != null) Destroy(zones[i]);
+        }
+
+        zones.Clear();
+    }
+
+    void UpdateAI(float now)
+    {
+        foreach (var kart in karts)
+        {
+            if (kart == null || kart.isPlayer) continue;
+
+            var ai = kart.GetComponent<KartAI>();
             if (ai == null) continue;
 
-            bool inf = state[k.kartIndex].infected;
-            bool imm = Time.time < state[k.kartIndex].immuneUntil;
+            bool infected = IsInfected(kart.kartIndex);
+            bool immune = IsImmune(kart.kartIndex);
 
-            if (inf)
+            if (infected)
             {
-                // Chase nearest clean kart
                 ai.behaviour = KartAI.Behaviour.Chase;
-                ai.target    = NearestClean(k)?.transform;
+                ai.target = NearestClean(kart, now)?.transform;
                 if (ai.target == null) ai.behaviour = KartAI.Behaviour.FollowTrack;
             }
-            else if (imm)
+            else if (immune)
             {
                 ai.behaviour = KartAI.Behaviour.FollowTrack;
+                ai.target = null;
             }
             else
             {
-                // Flee nearest infected if it's close; else follow track
-                var nearInf = NearestInfected(k);
-                float dist  = nearInf != null
-                    ? Vector3.Distance(k.transform.position, nearInf.transform.position)
+                var threat = NearestInfected(kart);
+                float dist = threat != null
+                    ? Vector3.Distance(kart.transform.position, threat.transform.position)
                     : float.MaxValue;
 
-                if (nearInf != null && dist < 5f)
+                if (threat != null && dist < infectionRadius * 4f)
                 {
                     ai.behaviour = KartAI.Behaviour.Flee;
-                    ai.target    = nearInf.transform;
+                    ai.target = threat.transform;
                 }
                 else
                 {
                     ai.behaviour = KartAI.Behaviour.FollowTrack;
+                    ai.target = null;
                 }
             }
         }
     }
 
-    KartController NearestClean(KartController self)
+    KartController NearestClean(KartController self, float now)
     {
-        KartController best = null; float bestD = float.MaxValue;
-        foreach (var k in karts)
+        KartController best = null;
+        float bestSq = float.MaxValue;
+
+        foreach (var kart in karts)
         {
-            if (k == self || state[k.kartIndex].infected) continue;
-            float d = Vector3.Distance(self.transform.position, k.transform.position);
-            if (d < bestD) { bestD = d; best = k; }
+            if (kart == null || kart == self) continue;
+            if (!states.TryGetValue(kart.kartIndex, out var state)) continue;
+            if (state.infected || now < state.immuneUntil) continue;
+
+            float sq = (kart.transform.position - self.transform.position).sqrMagnitude;
+            if (sq < bestSq)
+            {
+                bestSq = sq;
+                best = kart;
+            }
         }
+
         return best;
     }
 
     KartController NearestInfected(KartController self)
     {
-        KartController best = null; float bestD = float.MaxValue;
-        foreach (var k in karts)
+        KartController best = null;
+        float bestSq = float.MaxValue;
+
+        foreach (var kart in karts)
         {
-            if (k == self || !state[k.kartIndex].infected) continue;
-            float d = Vector3.Distance(self.transform.position, k.transform.position);
-            if (d < bestD) { bestD = d; best = k; }
+            if (kart == null || kart == self || !IsInfected(kart.kartIndex)) continue;
+
+            float sq = (kart.transform.position - self.transform.position).sqrMagnitude;
+            if (sq < bestSq)
+            {
+                bestSq = sq;
+                best = kart;
+            }
         }
+
         return best;
     }
 
-    // ── Round end ────────────────────────────────────────────────────────────
-
     void EndRound()
     {
+        if (!running) return;
+
         running = false;
-        InfectedHUD.I?.ShowResult(Winner());
-    }
-
-    string Winner()
-    {
-        KartController cleanWinner   = null;
-        KartController leastInfected = null;
-        float          leastTime     = float.MaxValue;
-
-        foreach (var k in karts)
+        foreach (var kart in karts)
         {
-            var s = state[k.kartIndex];
-            if (!s.infected)  { cleanWinner = k; break; }
-            if (s.totalInfTime < leastTime) { leastTime = s.totalInfTime; leastInfected = k; }
+            if (kart == null) continue;
+            kart.StopImmediately();
+            kart.maxSpeedMul = 1f;
+            kart.steerMul = 1f;
         }
 
-        if (cleanWinner   != null) return $"Kart {cleanWinner.kartIndex} wins — stayed clean!";
-        if (leastInfected != null) return $"Kart {leastInfected.kartIndex} wins — least infected ({leastTime:F1}s)";
-        return "Draw";
+        InfectedHUD.I?.ShowResult(BuildResultMessage());
     }
 
-    // ── Public accessors (for HUD) ───────────────────────────────────────────
+    string BuildResultMessage()
+    {
+        List<KartController> ranking = BuildRanking();
+        if (ranking.Count == 0) return "Draw";
 
-    public float RoundTimer  => roundTimer;
-    public int   TotalKarts  => karts?.Length ?? 0;
-    public int   CleanKarts  { get { int c = 0; foreach (var s in state.Values) if (!s.infected) c++; return c; } }
-    public bool  IsInfected(int idx) => state.TryGetValue(idx, out var s) && s.infected;
-    public bool  IsImmune(int idx)   => state.TryGetValue(idx, out var s) && Time.time < s.immuneUntil;
+        var winner = ranking[0];
+        bool cleanWinner = !IsInfected(winner.kartIndex);
+
+        var sb = new StringBuilder();
+        sb.Append(cleanWinner ? "Winner: " : "Least infected: ");
+        sb.Append(winner.isPlayer ? "YOU" : $"Kart {winner.kartIndex}");
+
+        for (int i = 0; i < ranking.Count; i++)
+        {
+            var kart = ranking[i];
+            float time = states[kart.kartIndex].totalInfectedTime;
+            sb.AppendLine();
+            sb.Append($"{i + 1}. {(kart.isPlayer ? "YOU" : $"Kart {kart.kartIndex}")} - {time:F1}s infected");
+        }
+
+        return sb.ToString();
+    }
+
+    List<KartController> BuildRanking()
+    {
+        var ranking = new List<KartController>();
+        if (karts == null) return ranking;
+
+        ranking.AddRange(karts);
+        ranking.RemoveAll(k => k == null || !states.ContainsKey(k.kartIndex));
+        ranking.Sort((a, b) =>
+        {
+            bool aClean = !states[a.kartIndex].infected;
+            bool bClean = !states[b.kartIndex].infected;
+
+            if (aClean != bClean) return aClean ? -1 : 1;
+            return states[a.kartIndex].totalInfectedTime.CompareTo(states[b.kartIndex].totalInfectedTime);
+        });
+
+        return ranking;
+    }
+
+    public bool IsInfected(int idx) => states.TryGetValue(idx, out var s) && s.infected;
+    public bool IsImmune(int idx) => states.TryGetValue(idx, out var s) && Time.time < s.immuneUntil;
+    public float InfectionTime(int idx) => states.TryGetValue(idx, out var s) ? s.totalInfectedTime : 0f;
 }

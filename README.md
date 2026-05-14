@@ -23,6 +23,10 @@ This repo is a prototype and planning base. The next production milestone is a U
 
 Unity source files are staged under `unity/`. When creating or importing the Unity project, use `unity/` as the Unity project root so Unity generates `Packages/` and `ProjectSettings/` beside `Assets/`.
 
+The first production slice is `Infected`. In Unity, create an empty scene, add `InfectedSceneBootstrap` to an empty GameObject, and press Play. The bootstrapper creates a complete playable baseline scene from code.
+
+The repo now includes `unity/Assets/Scenes/InfectedArena.unity`, and the local Windows build target is produced at `unity/Builds/Windows/ZIKJ-Infected.exe`.
+
 ## Safety Note
 
 Game logic must never be the only safety layer. Real kart emergency stop, speed governor, and motor control must be handled by dedicated venue hardware.
