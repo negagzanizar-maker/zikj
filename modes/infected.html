@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>INFECTED — Karting Prototype</title>
+<style>
+  :root { --accent:#ff3344; --safe:#44ff88; --panel:rgba(8,8,12,0.88); }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#0a0a0c;color:#f0f0f0;font-family:ui-monospace,monospace;overflow:hidden}
+  #stage{position:relative;width:1280px;height:720px;margin:0 auto}
+  canvas{display:block}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,0.82);display:flex;align-items:center;justify-content:center;text-align:center;z-index:10}
+  .overlay.hidden{display:none}
+  .panel{padding:32px 48px;border:1px solid #333;border-radius:8px;background:var(--panel);max-width:580px}
+  h1{letter-spacing:.25em;margin:0 0 8px;font-size:48px;color:var(--accent);text-shadow:0 0 24px rgba(255,51,68,.6)}
+  h2{letter-spacing:.2em;margin:0 0 12px;font-size:26px}
+  p{line-height:1.6;margin:8px 0;color:#ccc}
+  ul{text-align:left;line-height:1.8;color:#bbb}
+  .btnrow{display:flex;gap:12px;justify-content:center;margin-top:20px}
+  button{background:var(--accent);color:#000;border:none;padding:12px 26px;font-family:inherit;font-size:15px;letter-spacing:.15em;cursor:pointer;border-radius:4px;font-weight:bold}
+  button.sec{background:#444;color:#fff}
+  button:hover{filter:brightness(1.18)}
+  #hud{position:absolute;top:12px;left:12px;z-index:5;pointer-events:none;font-size:13px}
+  #hud>div{background:var(--panel);padding:6px 12px;margin-bottom:4px;border-radius:4px;border-left:3px solid #444;min-width:220px}
+  .clean{border-left-color:#88ddff!important} .infected{border-left-color:var(--accent)!important} .immune{border-left-color:var(--safe)!important}
+  #help{position:absolute;bottom:12px;right:12px;z-index:5;background:var(--panel);padding:6px 12px;font-size:11px;border-radius:4px;color:#888}
+  #back{position:absolute;top:12px;right:12px;z-index:5;background:var(--panel);padding:6px 14px;font-size:12px;border-radius:4px;color:#888;text-decoration:none;border:1px solid #333}
+  #back:hover{color:#fff}
+  .scrim{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:64px;letter-spacing:.3em;color:#fff;text-shadow:0 0 30px #000;pointer-events:none;z-index:4}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="1280" height="720"></canvas>
+  <a id="back" href="../index.html">← Hub</a>
+  <div id="hud">
+    <div id="timer">TIME — 3:00</div>
+    <div id="status" class="clean">STATUS — CLEAN</div>
+    <div id="infCount">INFECTED — 1 / 6</div>
+    <div id="infTime">INFECTION TIME — 0.0s</div>
+  </div>
+  <div id="help">WASD / Arrows · SPACE pause · R restart · S simulate</div>
+  <div id="intro" class="overlay">
+    <div class="panel">
+      <h1>INFECTED</h1>
+      <p>One kart starts infected. Touch transfers it. <strong>Last clean kart wins.</strong></p>
+      <p>If all infected, kart with <em>shortest total infection time</em> wins.</p>
+      <ul>
+        <li><strong>WASD / Arrows</strong> — drive (you = cyan kart)</li>
+        <li><strong>Green pads</strong> — 3 sec immunity, clears infection</li>
+        <li><strong>Infect someone</strong> — +10% speed for 5 sec</li>
+      </ul>
+      <div class="btnrow">
+        <button id="playBtn">PLAY</button>
+        <button id="simBtn" class="sec">SIMULATE</button>
+      </div>
+    </div>
+  </div>
+  <div id="endcard" class="overlay hidden">
+    <div class="panel">
+      <h2 id="endTitle">RESULTS</h2>
+      <div id="endStats" style="text-align:left;margin-top:14px;font-size:13px"></div>
+      <div class="btnrow">
+        <button id="replayBtn">PLAY AGAIN</button>
+        <button id="replaySimBtn" class="sec">SIMULATE</button>
+      </div>
+    </div>
+  </div>
+  <div id="pauseScrim" class="scrim" style="display:none">PAUSED</div>
+</div>
+<script src="../engine.js"></script>
+<script>
+'use strict';
+const E   = window.Engine;
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+
+// ── RULE CONSTANTS ──
+const INFECTION_R      = 36;
+const BOOST_FACTOR     = 1.10;
+const BOOST_TIME       = 5.0;
+const IMMUNITY_TIME    = 3.0;
+const ZONE_LIFETIME    = 8.0;
+const ZONE_RADIUS      = 38;
+const ZONE_INT_MIN     = 12;
+const ZONE_INT_MAX     = 20;
+const ROUND_DUR        = 180;
+const NUM_AI           = 5;
+
+const state = { karts:[], zones:[], now:0, paused:false, ended:false, running:false, sim:false, nextZone:0 };
+
+class SafeZone {
+  constructor(now){ const p=E.centerlineAt(Math.random()); this.x=p.x; this.y=p.y; this.born=now; }
+  alive(now){ return now-this.born < ZONE_LIFETIME; }
+  age(now)  { return (now-this.born)/ZONE_LIFETIME; }
+}
+
+function kartIsImmune(k, now){ return now < (k.tags.immuneUntil||0); }
+function kartHasBoost(k, now) { return now < (k.tags.boostUntil||0); }
+
+function startGame(sim) {
+  state.karts=[]; state.zones=[]; state.now=0;
+  state.paused=false; state.ended=false; state.running=true; state.sim=!!sim; state.nextZone=6;
+  const total = 1+NUM_AI;
+  state.karts.push(new E.Kart(0,!sim,E.PLAYER_COLOR,E.spawnPositionForIndex(0,total)));
+  for(let i=0;i<NUM_AI;i++) state.karts.push(new E.Kart(i+1,false,E.COLORS[(i+1)%E.COLORS.length],E.spawnPositionForIndex(i+1,total)));
+  const p0 = state.karts[1+Math.floor(Math.random()*NUM_AI)];
+  p0.tags.infected=true; p0.tags.infectedAt=state.now; p0.tags.totalInfTime=0;
+  for(const k of state.karts) if(!k.tags.infected){ k.tags.infected=false; k.tags.infectedAt=0; k.tags.totalInfTime=0; }
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('endcard').classList.add('hidden');
+}
+
+function aiFor(kart) {
+  const now = state.now;
+  const infected = kart.tags.infected;
+  if(infected){
+    const prey = E.nearestKart(kart, state.karts, k=>!k.tags.infected && !kartIsImmune(k,now));
+    if(prey) return E.aiInputToward(kart, prey);
+  } else {
+    const threat = E.nearestKart(kart, state.karts, k=>k.tags.infected, INFECTION_R*5);
+    if(threat){
+      const dx=kart.x-threat.x, dy=kart.y-threat.y, len=Math.sqrt(dx*dx+dy*dy)||1;
+      const wp=E.WAYPOINTS[(kart.aiWP+4)%E.NUM_WP];
+      return E.aiInputToward(kart,{x:wp.x+(dx/len)*60,y:wp.y+(dy/len)*60});
+    }
+  }
+  return E.aiInputToward(kart, E.advanceWaypoint(kart));
+}
+
+function step(dt) {
+  state.now += dt;
+  for(const k of state.karts){
+    const inp = (k.isPlayer && !state.sim) ? E.playerInput() : aiFor(k);
+    k.maxSpeedMul = kartHasBoost(k, state.now) ? BOOST_FACTOR : 1;
+    E.stepKart(k, dt, inp);
+  }
+  E.resolveOverlaps(state.karts);
+
+  // Infection
+  const now=state.now;
+  for(let i=0;i<state.karts.length;i++) for(let j=i+1;j<state.karts.length;j++){
+    const a=state.karts[i], b=state.karts[j];
+    const dx=b.x-a.x, dy=b.y-a.y;
+    if(dx*dx+dy*dy > INFECTION_R*INFECTION_R) continue;
+    if(kartIsImmune(a,now)||kartIsImmune(b,now)) continue;
+    if(a.tags.infected && !b.tags.infected){
+      b.tags.infected=true; b.tags.infectedAt=now;
+      a.tags.boostUntil=now+BOOST_TIME;
+    } else if(b.tags.infected && !a.tags.infected){
+      a.tags.infected=true; a.tags.infectedAt=now;
+      b.tags.boostUntil=now+BOOST_TIME;
+    }
+  }
+
+  // Zones
+  state.zones = state.zones.filter(z=>z.alive(now));
+  for(const z of state.zones) for(const k of state.karts){
+    const dx=k.x-z.x, dy=k.y-z.y;
+    if(dx*dx+dy*dy <= ZONE_RADIUS*ZONE_RADIUS){
+      k.tags.immuneUntil = Math.max(k.tags.immuneUntil||0, now+IMMUNITY_TIME);
+      if(k.tags.infected){ k.tags.totalInfTime+=(now-k.tags.infectedAt); k.tags.infected=false; }
+    }
+  }
+  if(now>=state.nextZone){ state.zones.push(new SafeZone(now)); state.nextZone=now+ZONE_INT_MIN+Math.random()*(ZONE_INT_MAX-ZONE_INT_MIN); }
+
+  if(now>=ROUND_DUR) endRound();
+}
+
+function endRound(){
+  state.ended=true;
+  for(const k of state.karts) if(k.tags.infected) k.tags.totalInfTime+=(state.now-k.tags.infectedAt);
+  const clean=state.karts.filter(k=>!k.tags.infected);
+  const winner= clean.length ? clean.reduce((a,b)=>a.tags.totalInfTime<b.tags.totalInfTime?a:b)
+                              : state.karts.reduce((a,b)=>a.tags.totalInfTime<b.tags.totalInfTime?a:b);
+  document.getElementById('endTitle').textContent = winner.isPlayer ? (clean.length?'YOU SURVIVED':'YOU WIN — LEAST INFECTED') : (clean.length?`KART ${winner.id} SURVIVED`:`KART ${winner.id} WINS`);
+  const sorted=[...state.karts].sort((a,b)=>a.tags.totalInfTime-b.tags.totalInfTime);
+  document.getElementById('endStats').innerHTML = sorted.map((k,i)=>{
+    const sw=`<span style="display:inline-block;width:10px;height:10px;background:${k.color};border-radius:2px;margin-right:8px"></span>`;
+    return `<div style="padding:3px 0">${i+1}. ${sw}${k.isPlayer?'YOU':`Kart ${k.id}`} — ${k.tags.totalInfTime.toFixed(1)}s infected</div>`;
+  }).join('');
+  document.getElementById('endcard').classList.remove('hidden');
+}
+
+function render() {
+  const inf=state.karts.filter(k=>k.tags.infected).length;
+  const ratio=state.karts.length?inf/state.karts.length:0;
+  const pulse=Math.sin(state.now*2)*.5+.5;
+  ctx.fillStyle=`rgb(${5+ratio*pulse*25},5,8)`;
+  ctx.fillRect(0,0,E.W,E.H);
+
+  const wc=`rgb(${40+ratio*160},16,16)`;
+  E.drawTrack(ctx,{fillColor:`rgb(${22+ratio*14},20,22)`,wallColor:wc});
+
+  // Safe zones
+  for(const z of state.zones){
+    const age=z.age(state.now), pulse2=Math.sin(state.now*6)*.2+.8, alpha=(1-age)*pulse2;
+    E.radialGlow(ctx,z.x,z.y,ZONE_RADIUS,`rgba(80,255,140,${alpha*.55})`,'rgba(80,255,140,0)');
+    ctx.strokeStyle=`rgba(120,255,160,${alpha})`; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(z.x,z.y,ZONE_RADIUS,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle=`rgba(220,255,230,${alpha})`; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(z.x-8,z.y); ctx.lineTo(z.x+8,z.y); ctx.moveTo(z.x,z.y-8); ctx.lineTo(z.x,z.y+8); ctx.stroke();
+  }
+
+  // Trails + auras + karts
+  for(const k of state.karts) E.drawTrail(ctx,k, k.tags.infected ? (f=>(`rgba(255,60,60,${f*.55})`)) : (f=>`rgba(180,200,220,${f*.1})`), k.tags.infected?5:2);
+  for(const k of state.karts) if(k.tags.infected){
+    const p=Math.sin(state.now*4)*.15+.85;
+    E.radialGlow(ctx,k.x,k.y,INFECTION_R*1.4,`rgba(255,30,30,${.5*p})`,`rgba(120,0,0,0)`);
+  }
+  for(const k of state.karts){
+    const now=state.now;
+    const body = k.tags.infected ? '#ff2638' : k.color;
+    const outline = kartIsImmune(k,now) ? '#88ffaa' : k.tags.infected ? '#660011' : '#ffffff';
+    E.drawKartBase(ctx,k,body,outline,kartIsImmune(k,now)?2.5:1.5);
+    if(kartIsImmune(k,now)){
+      const rem=Math.max(0,(k.tags.immuneUntil||0)-now)/IMMUNITY_TIME;
+      ctx.strokeStyle=`rgba(80,255,140,${.5+.5*Math.sin(now*8)})`; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(k.x,k.y,E.KART_LEN*.9,0,Math.PI*2*rem); ctx.stroke();
+    }
+    if(kartHasBoost(k,now)){
+      ctx.save(); ctx.translate(k.x,k.y); ctx.rotate(k.heading);
+      const g=ctx.createLinearGradient(-E.KART_LEN/2-32,0,-E.KART_LEN/2,0);
+      g.addColorStop(0,'rgba(255,200,50,0)'); g.addColorStop(1,'rgba(255,220,80,.85)');
+      ctx.fillStyle=g; ctx.fillRect(-E.KART_LEN/2-32,-E.KART_WID/2+1,32,E.KART_WID-2); ctx.restore();
+    }
+  }
+
+  if(state.sim){
+    ctx.fillStyle='rgba(0,0,0,.7)'; ctx.fillRect(E.W-186,12,174,28);
+    ctx.fillStyle='#ffd042'; ctx.font='bold 14px ui-monospace,monospace'; ctx.textAlign='left';
+    ctx.fillText('SIMULATE MODE',E.W-172,30);
+  }
+}
+
+function updateHUD(){
+  document.getElementById('timer').textContent='TIME — '+E.fmtTime(Math.max(0,ROUND_DUR-state.now));
+  const inf=state.karts.filter(k=>k.tags.infected).length;
+  document.getElementById('infCount').textContent=`INFECTED — ${inf} / ${state.karts.length}`;
+  const me=state.karts[0]; if(!me) return;
+  const now=state.now;
+  const statusEl=document.getElementById('status');
+  if(kartIsImmune(me,now)){ statusEl.textContent=`STATUS — IMMUNE (${((me.tags.immuneUntil||0)-now).toFixed(1)}s)`; statusEl.className='immune'; }
+  else if(me.tags.infected){ statusEl.textContent='STATUS — INFECTED'; statusEl.className='infected'; }
+  else { statusEl.textContent='STATUS — CLEAN'; statusEl.className='clean'; }
+  let t=me.tags.totalInfTime||0; if(me.tags.infected) t+=(now-(me.tags.infectedAt||0));
+  document.getElementById('infTime').textContent=`INFECTION TIME — ${t.toFixed(1)}s`;
+}
+
+// ── LOOP ──
+let last=performance.now()/1000;
+function loop(){
+  const tNow=performance.now()/1000, dt=Math.min(.05,tNow-last); last=tNow;
+  if(state.running&&!state.paused&&!state.ended) step(dt);
+  if(state.running){ render(); updateHUD(); }
+  else { ctx.fillStyle='#050507'; ctx.fillRect(0,0,E.W,E.H); E.drawTrack(ctx); }
+  document.getElementById('pauseScrim').style.display=(state.running&&state.paused)?'block':'none';
+  requestAnimationFrame(loop);
+}
+
+// ── UI ──
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k===' '&&state.running){state.paused=!state.paused;e.preventDefault();}
+  if(k==='r') startGame(state.sim);
+  if(k==='s'&&state.running) startGame(!state.sim);
+});
+document.getElementById('playBtn').onclick=()=>startGame(false);
+document.getElementById('simBtn').onclick=()=>startGame(true);
+document.getElementById('replayBtn').onclick=()=>startGame(false);
+document.getElementById('replaySimBtn').onclick=()=>startGame(true);
+
+E.drawTrack(ctx); loop();
+</script>
+</body>
+</html>

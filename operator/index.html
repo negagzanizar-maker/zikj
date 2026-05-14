@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ZIKJ — Operator Dashboard</title>
+<style>
+  :root{--bg:#080a10;--surface:#0e1018;--border:#1a1d28;--accent:#f7c948;--red:#ff3344;--green:#42ff88;--blue:#42d6ff;--muted:#888;--panel:rgba(14,16,24,.97)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:#f0f0f0;font-family:ui-monospace,"SF Mono",monospace;min-height:100vh;display:grid;grid-template-rows:auto 1fr;grid-template-columns:240px 1fr}
+  /* ─── TOP BAR ─── */
+  .topbar{grid-column:1/-1;background:var(--surface);border-bottom:2px solid var(--accent);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between}
+  .logo{font-size:18px;letter-spacing:.3em;color:var(--accent);font-weight:bold}
+  .topbar-status{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--muted)}
+  .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+  .dot-green{background:var(--green);box-shadow:0 0 6px var(--green)}
+  .dot-yellow{background:var(--accent);box-shadow:0 0 6px var(--accent)}
+  .dot-red{background:var(--red);box-shadow:0 0 6px var(--red)}
+  /* ─── SIDEBAR ─── */
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 0;display:flex;flex-direction:column;gap:2px}
+  .nav-item{padding:10px 16px;font-size:12px;letter-spacing:.1em;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:10px;border-left:2px solid transparent;transition:.12s}
+  .nav-item:hover{color:#f0f0f0;background:rgba(255,255,255,.04)}
+  .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(247,201,72,.06)}
+  .nav-section{padding:12px 16px 4px;font-size:10px;letter-spacing:.15em;color:#444;text-transform:uppercase}
+  /* ─── MAIN ─── */
+  .content{padding:20px;overflow-y:auto}
+  .page{display:none}.page.active{display:block}
+  /* ─── CARDS ─── */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:14px}
+  .card-title{font-size:10px;letter-spacing:.15em;color:var(--muted);margin-bottom:12px;text-transform:uppercase}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  /* ─── RACE CONTROL ─── */
+  .big-btn{padding:16px 0;border:none;border-radius:6px;font-family:inherit;font-size:16px;font-weight:bold;letter-spacing:.15em;cursor:pointer;width:100%;transition:.12s}
+  .big-btn:hover{filter:brightness(1.12)}
+  .btn-start{background:var(--green);color:#000}
+  .btn-stop{background:var(--red);color:#fff}
+  .btn-pause{background:var(--accent);color:#000}
+  .btn-reset{background:#222;color:#aaa;border:1px solid var(--border)}
+  .mode-btn{padding:8px 0;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:#aaa;font-family:inherit;font-size:12px;cursor:pointer;text-align:center;transition:.12s;letter-spacing:.08em}
+  .mode-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .mode-btn.selected{border-color:var(--accent);background:rgba(247,201,72,.08);color:var(--accent)}
+  /* ─── KART GRID ─── */
+  .kart-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .kart-card{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px}
+  .kart-num{font-size:20px;font-weight:bold;margin-bottom:6px}
+  .kart-bar-wrap{background:#1a1d28;border-radius:3px;height:5px;overflow:hidden;margin:6px 0}
+  .kart-bar{height:100%;border-radius:3px;transition:width .5s}
+  .kart-stat{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-top:2px}
+  .kart-status-chip{font-size:10px;padding:2px 8px;border-radius:10px;display:inline-block;margin-top:4px;letter-spacing:.06em}
+  .chip-ok{background:rgba(66,255,136,.15);color:var(--green);border:1px solid rgba(66,255,136,.3)}
+  .chip-warn{background:rgba(247,201,72,.15);color:var(--accent);border:1px solid rgba(247,201,72,.3)}
+  .chip-off{background:rgba(136,136,136,.15);color:var(--muted);border:1px solid #333}
+  /* ─── TIMER ─── */
+  .race-timer{font-size:56px;font-weight:bold;letter-spacing:.05em;text-align:center;color:var(--accent);text-shadow:0 0 20px rgba(247,201,72,.4);padding:10px 0}
+  .race-phase{text-align:center;font-size:12px;letter-spacing:.2em;color:var(--muted);margin-bottom:8px}
+  /* ─── LIVE POSITIONS ─── */
+  .pos-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .pos-row:last-child{border-bottom:none}
+  .pos-num{width:24px;text-align:center;font-weight:bold;color:var(--muted);font-size:13px}
+  .pos-color{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+  .pos-name{flex:1;font-size:13px}
+  .pos-detail{font-size:12px;color:var(--muted);text-align:right}
+  /* ─── LOG ─── */
+  .log-entry{padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;display:flex;gap:10px}
+  .log-entry:last-child{border-bottom:none}
+  .log-time{color:var(--muted);flex-shrink:0;min-width:52px}
+  .log-msg{flex:1}
+  .log-warn{color:var(--accent)}
+  .log-ok{color:var(--green)}
+  .log-alert{color:var(--red)}
+  /* ─── MISC ─── */
+  .back-link{display:block;margin-bottom:14px;color:var(--muted);text-decoration:none;font-size:12px}
+  .back-link:hover{color:#f0f0f0}
+  .switch-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+  .switch-label{font-size:13px}
+  .switch{width:40px;height:22px;border-radius:11px;background:#222;border:1px solid var(--border);cursor:pointer;position:relative;transition:.2s}
+  .switch.on{background:var(--green)}
+  .switch::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:7px;background:#fff;transition:.2s}
+  .switch.on::after{left:21px}
+  .kill-btn{width:100%;padding:14px;background:#1a0004;border:2px solid var(--red);border-radius:6px;color:var(--red);font-family:inherit;font-size:14px;font-weight:bold;letter-spacing:.2em;cursor:pointer;transition:.12s;margin-top:8px}
+  .kill-btn:hover{background:#2a000a}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">ZIKJ OPS</div>
+  <div class="topbar-status">
+    <span><span class="status-dot dot-green"></span>Track ONLINE</span>
+    <span><span class="status-dot dot-green"></span>6 / 6 Karts READY</span>
+    <span><span class="status-dot dot-yellow"></span>Session: IDLE</span>
+    <span id="clock">--:--:--</span>
+  </div>
+</div>
+
+<aside class="sidebar">
+  <div class="nav-section">Race</div>
+  <div class="nav-item active" data-page="control">🎮 Race Control</div>
+  <div class="nav-item" data-page="karts">🏎 Kart Status</div>
+  <div class="nav-item" data-page="live">📡 Live Race</div>
+  <div class="nav-section">Venue</div>
+  <div class="nav-item" data-page="schedule">📅 Schedule</div>
+  <div class="nav-item" data-page="settings">⚙ Settings</div>
+  <div style="margin-top:auto;padding:16px">
+    <a class="back-link" href="../index.html">← Back to Hub</a>
+  </div>
+</aside>
+
+<main class="content">
+
+  <!-- RACE CONTROL -->
+  <div class="page active" id="page-control">
+    <div class="grid2">
+      <div>
+        <div class="card">
+          <div class="card-title">Select Game Mode</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button class="mode-btn selected" onclick="selectMode(this,'INFECTED')">☣ INFECTED</button>
+            <button class="mode-btn" onclick="selectMode(this,'DRIFT')">💨 DRIFT ARENA</button>
+            <button class="mode-btn" onclick="selectMode(this,'GRAND PRIX')">🏆 GRAND PRIX</button>
+            <button class="mode-btn" onclick="selectMode(this,'TRON')">⚡ TRON</button>
+            <button class="mode-btn" onclick="selectMode(this,'LAST ONE LIT')">💡 LAST ONE LIT</button>
+            <button class="mode-btn" onclick="selectMode(this,'CUSTOM')">🎲 RANDOM</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Race Duration</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <button class="mode-btn" onclick="selectDur(this,'2:00')">2 min</button>
+            <button class="mode-btn selected" onclick="selectDur(this,'3:00')">3 min</button>
+            <button class="mode-btn" onclick="selectDur(this,'5:00')">5 min</button>
+            <button class="mode-btn" onclick="selectDur(this,'∞')">Open</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Race Controls</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <button class="big-btn btn-start" onclick="doStart()">▶ START</button>
+            <button class="big-btn btn-pause" onclick="doPause()">⏸ PAUSE</button>
+          </div>
+          <button class="big-btn btn-reset" onclick="doReset()" style="margin-bottom:10px">↺ RESET / NEW RACE</button>
+          <button class="kill-btn" onclick="doKill()">⚠ EMERGENCY STOP — ALL KARTS</button>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-title">Race Timer</div>
+          <div class="race-phase" id="race-phase">WAITING TO START</div>
+          <div class="race-timer" id="race-timer">3:00</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <div style="flex:1;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px">
+              <div style="font-size:20px;font-weight:bold;color:var(--green)" id="clean-count">5</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">CLEAN</div>
+            </div>
+            <div style="flex:1;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px">
+              <div style="font-size:20px;font-weight:bold;color:var(--red)" id="inf-count">1</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">INFECTED</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Live Positions</div>
+          <div id="live-pos"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Event Log</div>
+          <div id="event-log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KART STATUS -->
+  <div class="page" id="page-karts">
+    <div class="card">
+      <div class="card-title">Kart Status — All 6 Karts</div>
+      <div class="kart-grid" id="kart-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Kart Controls</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="mode-btn" style="padding:8px 16px;flex:1" onclick="alert('Speed governor set to 80% for all karts.')">Set Speed 80%</button>
+        <button class="mode-btn" style="padding:8px 16px;flex:1" onclick="alert('Speed governor set to 60% for all karts. Kid mode active.')">Kid Mode (60%)</button>
+        <button class="mode-btn" style="padding:8px 16px;flex:1" onclick="alert('Speed governor set to 100%. Full speed enabled.')">Full Speed</button>
+        <button class="mode-btn" style="padding:8px 16px;flex:1" onclick="alert('All karts returning to pit lane.')">Recall All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE RACE (mock) -->
+  <div class="page" id="page-live">
+    <div class="card">
+      <div class="card-title">Live Race View — Top-Down Track Feed</div>
+      <div style="background:#0a0c12;border-radius:4px;height:380px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);position:relative;overflow:hidden">
+        <div id="liveCanvas" style="width:100%;height:100%">
+          <svg viewBox="0 0 640 360" style="width:100%;height:100%">
+            <!-- Track outer -->
+            <path d="M130 90 L510 90 A90 90 0 0 1 510 270 L130 270 A90 90 0 0 1 130 90 Z" fill="#1a1a24" stroke="#333" stroke-width="2"/>
+            <!-- Track inner -->
+            <path d="M130 135 L510 135 A45 45 0 0 1 510 225 L130 225 A45 45 0 0 1 130 135 Z" fill="#0a0c12"/>
+            <!-- Start line -->
+            <rect x="130" y="90" width="6" height="45" fill="rgba(255,255,255,0.3)"/>
+            <!-- Kart dots -->
+            <circle id="k0" cx="155" cy="108" r="7" fill="#42d6ff" stroke="#fff" stroke-width="1.5"/>
+            <circle id="k1" cx="175" cy="118" r="7" fill="#ffd042"/>
+            <circle id="k2" cx="510" cy="145" r="7" fill="#ff42d6"/>
+            <circle id="k3" cx="420" cy="90" r="7" fill="#42ff88"/>
+            <circle id="k4" cx="320" cy="270" r="7" fill="#d042ff"/>
+            <circle id="k5" cx="200" cy="250" r="7" fill="#ff8842"/>
+            <!-- Infection aura on k1 -->
+            <circle cx="175" cy="118" r="18" fill="rgba(255,51,68,0.15)" stroke="rgba(255,51,68,0.4)" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);padding:6px 12px;border-radius:4px;font-size:12px;color:var(--muted)">
+          Camera feed — real system uses overhead IP cameras + ArUco tracking
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div class="page" id="page-schedule">
+    <div class="card">
+      <div class="card-title">Today's Schedule — Sat 17 May 2026</div>
+      <div id="schedule-list"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="card">
+      <div class="card-title">Venue Settings</div>
+      <div class="switch-row"><span class="switch-label">Projection mapping enabled</span><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="switch-row"><span class="switch-label">Sound effects</span><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="switch-row"><span class="switch-label">Ambient wall lighting sync</span><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="switch-row"><span class="switch-label">Auto-start next race</span><div class="switch" onclick="this.classList.toggle('on')"></div></div>
+      <div class="switch-row"><span class="switch-label">Leaderboard screen</span><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="switch-row"><span class="switch-label">Kid mode (60% speed cap)</span><div class="switch" onclick="this.classList.toggle('on')"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">System</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.9">
+        <div>Tracking service: <span style="color:var(--green)">RUNNING</span> — 47 ms avg latency</div>
+        <div>Projection renderer: <span style="color:var(--green)">RUNNING</span> — Unity 6.0 LTS</div>
+        <div>Game server: <span style="color:var(--green)">RUNNING</span> — LAN mode</div>
+        <div>Projectors online: <span style="color:var(--accent)">3 / 4</span> (Projector C calibrating)</div>
+        <div>Cameras online: <span style="color:var(--green)">2 / 2</span></div>
+      </div>
+      <button class="mode-btn" style="margin-top:12px;padding:8px 16px;width:auto" onclick="alert('Recalibration started. This takes approx 2 minutes.')">Recalibrate Projectors</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── NAV ──
+document.querySelectorAll('.nav-item[data-page]').forEach(item=>{
+  item.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('page-'+item.dataset.page).classList.add('active');
+  });
+});
+
+// ── CLOCK ──
+function tick(){
+  const d=new Date();
+  document.getElementById('clock').textContent=d.toTimeString().slice(0,8);
+}
+tick(); setInterval(tick,1000);
+
+// ── RACE STATE ──
+let raceRunning=false, racePaused=false;
+let raceTime=180, elapsed=0;
+let raceInterval=null;
+let selectedMode='INFECTED', selectedDur=180;
+
+const MOCK_KARTS=[
+  {id:1,name:'Kart 1',color:'#42d6ff',battery:88,signal:95,speed:62,status:'ok'},
+  {id:2,name:'Kart 2',color:'#ffd042',battery:72,signal:88,speed:55,status:'ok'},
+  {id:3,name:'Kart 3',color:'#ff42d6',battery:45,signal:92,speed:58,status:'warn'},
+  {id:4,name:'Kart 4',color:'#42ff88',battery:91,signal:99,speed:60,status:'ok'},
+  {id:5,name:'Kart 5',color:'#d042ff',battery:62,signal:85,speed:48,status:'ok'},
+  {id:6,name:'Kart 6',color:'#ff8842',battery:33,signal:78,speed:0,status:'warn'},
+];
+
+document.getElementById('kart-grid').innerHTML=MOCK_KARTS.map(k=>`
+  <div class="kart-card">
+    <div class="kart-num" style="color:${k.color}">#${k.id}</div>
+    <div style="font-size:11px;color:var(--muted)">Battery</div>
+    <div class="kart-bar-wrap"><div class="kart-bar" style="width:${k.battery}%;background:${k.battery<40?'#ff3344':k.battery<60?'#f7c948':'#42ff88'}"></div></div>
+    <div class="kart-stat"><span>Battery</span><span>${k.battery}%</span></div>
+    <div class="kart-stat"><span>Signal</span><span>${k.signal}%</span></div>
+    <div class="kart-stat"><span>Speed</span><span>${k.speed} km/h</span></div>
+    <span class="kart-status-chip ${k.status==='ok'?'chip-ok':'chip-warn'}">${k.status==='ok'?'READY':'CHECK'}</span>
+    <button style="display:block;margin-top:8px;width:100%;padding:5px;background:#1a0006;border:1px solid #440011;color:#ff8888;font-family:inherit;font-size:11px;border-radius:3px;cursor:pointer" onclick="alert('Kart ${k.id} recalled to pit lane.')">Recall</button>
+  </div>
+`).join('');
+
+// ── LIVE POSITIONS (mock) ──
+const POSITIONS=[
+  {pos:1,name:'Kart 4',color:'#42ff88',detail:'Clean · fastest kart'},
+  {pos:2,name:'Kart 1 (YOU)',color:'#42d6ff',detail:'Clean · 3rd consecutive clean'},
+  {pos:3,name:'Kart 3',color:'#ff42d6',detail:'INFECTED ☣',alert:true},
+  {pos:4,name:'Kart 6',color:'#ff8842',detail:'Clean · near pit'},
+  {pos:5,name:'Kart 2',color:'#ffd042',detail:'INFECTED ☣',alert:true},
+  {pos:6,name:'Kart 5',color:'#d042ff',detail:'Clean · in safe zone'},
+];
+document.getElementById('live-pos').innerHTML=POSITIONS.map(p=>`
+  <div class="pos-row">
+    <div class="pos-num">${p.pos}</div>
+    <div class="pos-color" style="background:${p.color}"></div>
+    <div class="pos-name">${p.name}</div>
+    <div class="pos-detail" style="${p.alert?'color:var(--red)':'color:var(--muted)'}">${p.detail}</div>
+  </div>
+`).join('');
+
+// ── EVENT LOG ──
+const LOG_ENTRIES=[
+  {t:'21:14:33',msg:'Race started — INFECTED mode · 6 karts',cls:'log-ok'},
+  {t:'21:14:35',msg:'Kart 2 is PATIENT ZERO',cls:'log-alert'},
+  {t:'21:14:52',msg:'Kart 2 infected Kart 3',cls:'log-warn'},
+  {t:'21:15:10',msg:'Safe zone spawned — near turn 2',cls:''},
+  {t:'21:15:22',msg:'Kart 5 used safe zone (immune 3s)',cls:'log-ok'},
+  {t:'21:15:40',msg:'Kart 3 infected Kart 6',cls:'log-warn'},
+];
+document.getElementById('event-log').innerHTML=LOG_ENTRIES.map(l=>`
+  <div class="log-entry"><span class="log-time">${l.t}</span><span class="log-msg ${l.cls}">${l.msg}</span></div>
+`).join('');
+
+// ── SCHEDULE ──
+const SCHEDULE=[
+  {time:'17:00',group:'Private — 4 players',status:'done',mode:'Grand Prix × 3'},
+  {time:'18:30',group:'Walk-ins — 6 players',status:'done',mode:'Infected + Drift'},
+  {time:'20:00',group:'Birthday — 8 players',status:'done',mode:'All modes rotation'},
+  {time:'21:30',group:'Corporate — 10 players',status:'now',mode:'Tournament format'},
+  {time:'23:00',group:'Late session — 4 players',status:'upcoming',mode:'TBD'},
+];
+document.getElementById('schedule-list').innerHTML=SCHEDULE.map(s=>`
+  <div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+    <div style="min-width:50px;font-weight:bold;color:var(--accent)">${s.time}</div>
+    <div style="flex:1">
+      <div style="font-size:13px">${s.group}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.mode}</div>
+    </div>
+    <div style="font-size:11px;padding:3px 10px;border-radius:10px;${s.status==='done'?'color:#666;background:#111;border:1px solid #222':s.status==='now'?'color:var(--green);background:rgba(66,255,136,.1);border:1px solid rgba(66,255,136,.3)':'color:var(--accent);background:rgba(247,201,72,.08);border:1px solid rgba(247,201,72,.2)'}">${s.status.toUpperCase()}</div>
+  </div>
+`).join('');
+
+// ── CONTROLS ──
+function selectMode(btn,mode){
+  document.querySelectorAll('.mode-btn').forEach(b=>{if(b.onclick&&b.onclick.toString().includes('selectMode')) b.classList.remove('selected')});
+  btn.classList.add('selected'); selectedMode=mode;
+  addLog(`Mode selected: ${mode}`,'');
+}
+function selectDur(btn,label){
+  document.querySelectorAll('.mode-btn').forEach(b=>{if(b.onclick&&b.onclick.toString().includes('selectDur')) b.classList.remove('selected')});
+  btn.classList.add('selected');
+  const map={'2:00':120,'3:00':180,'5:00':300,'∞':999};
+  selectedDur=map[label]||180; raceTime=selectedDur; updateTimer();
+}
+
+function doStart(){
+  if(raceRunning&&!racePaused){ alert('Race already running.'); return; }
+  if(racePaused){ racePaused=false; document.getElementById('race-phase').textContent=`RUNNING — ${selectedMode}`; return; }
+  raceRunning=true; racePaused=false; elapsed=0; raceTime=selectedDur;
+  document.getElementById('race-phase').textContent=`RUNNING — ${selectedMode}`;
+  addLog(`Race STARTED — ${selectedMode}`,'log-ok');
+  raceInterval=setInterval(()=>{
+    if(!racePaused){ elapsed++; updateTimer(); }
+    if(elapsed>=selectedDur&&selectedDur!==999){ clearInterval(raceInterval); raceRunning=false; document.getElementById('race-phase').textContent='RACE FINISHED'; addLog('Race FINISHED','log-ok'); }
+  },1000);
+}
+function doPause(){
+  if(!raceRunning) return;
+  racePaused=!racePaused;
+  document.getElementById('race-phase').textContent=racePaused?'PAUSED':`RUNNING — ${selectedMode}`;
+  addLog(racePaused?'Race PAUSED':'Race RESUMED',racePaused?'log-warn':'log-ok');
+}
+function doReset(){
+  clearInterval(raceInterval); raceRunning=false; racePaused=false; elapsed=0;
+  raceTime=selectedDur; updateTimer();
+  document.getElementById('race-phase').textContent='WAITING TO START';
+  addLog('Race RESET — ready for new session','');
+}
+function doKill(){
+  if(!confirm('Emergency stop all karts? This will immediately halt all kart motors.')) return;
+  clearInterval(raceInterval); raceRunning=false;
+  document.getElementById('race-phase').textContent='⚠ EMERGENCY STOP';
+  addLog('EMERGENCY STOP — all karts halted','log-alert');
+}
+function updateTimer(){
+  const rem=Math.max(0,selectedDur-elapsed);
+  document.getElementById('race-timer').textContent=selectedDur===999?E_fmtTime(elapsed):E_fmtTime(rem);
+}
+function E_fmtTime(sec){ const m=Math.floor(sec/60),s=sec%60; return `${m}:${String(s).padStart(2,'0')}`; }
+function addLog(msg,cls){
+  const d=new Date(), t=d.toTimeString().slice(0,8);
+  const log=document.getElementById('event-log');
+  const div=document.createElement('div'); div.className=`log-entry`;
+  div.innerHTML=`<span class="log-time">${t}</span><span class="log-msg ${cls}">${msg}</span>`;
+  log.prepend(div);
+  if(log.children.length>20) log.removeChild(log.lastChild);
+}
+</script>
+</body>
+</html>

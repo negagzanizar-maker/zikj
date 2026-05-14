@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ZIKJ — Mixed Reality Karting</title>
+<style>
+  :root{--bg:#07080e;--surface:#0d0f18;--border:#1a1d2c;--accent:#f7c948;--muted:#666;--text:#eee}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:ui-monospace,"SF Mono",Menlo,monospace}
+  /* ─── HEADER ─── */
+  header{padding:32px 40px 0;text-align:center}
+  .logo{font-size:52px;letter-spacing:.35em;color:var(--accent);font-weight:bold;text-shadow:0 0 40px rgba(247,201,72,.45)}
+  .tagline{font-size:13px;color:var(--muted);letter-spacing:.25em;margin-top:8px}
+  .phase-chip{display:inline-block;margin-top:14px;padding:4px 16px;border:1px solid #2a2d3a;border-radius:20px;font-size:11px;letter-spacing:.15em;color:var(--muted)}
+  /* ─── SECTIONS ─── */
+  main{max-width:1140px;margin:0 auto;padding:36px 24px 60px}
+  .section-label{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-bottom:14px;padding-left:2px;border-left:2px solid var(--accent);padding-left:10px}
+  .grid{display:grid;gap:14px;margin-bottom:36px}
+  .grid-2{grid-template-columns:repeat(2,1fr)}
+  .grid-3{grid-template-columns:repeat(3,1fr)}
+  .grid-4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}}
+  /* ─── CARDS ─── */
+  a.card{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;text-decoration:none;color:inherit;transition:border-color .15s,transform .12s,background .15s;cursor:pointer}
+  a.card:hover{border-color:var(--accent);background:#10121e;transform:translateY(-2px)}
+  .card-icon{font-size:28px;margin-bottom:10px;line-height:1}
+  .card-title{font-size:15px;font-weight:bold;letter-spacing:.06em;margin-bottom:6px}
+  .card-desc{font-size:12px;color:var(--muted);line-height:1.6;flex:1}
+  .card-tag{margin-top:12px;font-size:10px;letter-spacing:.12em;padding:3px 10px;border-radius:10px;display:inline-block;width:fit-content}
+  .tag-game{background:rgba(247,201,72,.1);color:var(--accent);border:1px solid rgba(247,201,72,.25)}
+  .tag-tool{background:rgba(66,214,255,.08);color:#42d6ff;border:1px solid rgba(66,214,255,.2)}
+  .tag-ops{background:rgba(66,255,136,.08);color:#42ff88;border:1px solid rgba(66,255,136,.2)}
+  /* mode-specific accent colours on hover */
+  a.card.infected:hover{border-color:#ff3344}
+  a.card.drift:hover{border-color:#e040fb}
+  a.card.gp:hover{border-color:#f7c948}
+  a.card.tron:hover{border-color:#00f0ff}
+  a.card.lit:hover{border-color:#ffd042}
+  /* ─── PROTOTYPE BANNER ─── */
+  .proto-banner{background:#0c0e18;border:1px solid #22253a;border-radius:8px;padding:16px 20px;margin-bottom:28px;display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted);line-height:1.6}
+  .proto-icon{font-size:24px;flex-shrink:0}
+  /* ─── FOOTER ─── */
+  footer{text-align:center;padding:20px;font-size:11px;color:#2a2d3a;letter-spacing:.1em}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ZIKJ</div>
+  <div class="tagline">MIXED-REALITY KARTING — DESIGN PROTOTYPE</div>
+  <div class="phase-chip">PHASE 1 PROTOTYPE · BROWSER BUILD · PRE-UNITY</div>
+</header>
+
+<main>
+  <div class="proto-banner">
+    <div class="proto-icon">⚡</div>
+    <div>
+      <strong style="color:var(--text)">Everything here is a browser prototype.</strong> No Unity, no hardware, no install required — double-click any file and play.
+      The projection-mapped visuals you see in each game mode are <em>exactly</em> what will be mapped onto the real track floor.
+      Once game rules are validated here, this code is ported to Unity and projected via ceiling-mounted laser projectors.
+    </div>
+  </div>
+
+  <div class="section-label">Game Modes — 5 playable</div>
+  <div class="grid grid-3" style="margin-bottom:36px">
+    <a class="card infected" href="modes/infected.html">
+      <div class="card-icon">☣</div>
+      <div class="card-title">INFECTED</div>
+      <div class="card-desc">Battle royale. One kart starts infected — touch transfers it. Last clean kart wins. If all infected, shortest infection time wins. Safe zones spawn around track.</div>
+      <span class="card-tag tag-game">BATTLE ROYALE</span>
+    </a>
+    <a class="card drift" href="modes/drift.html">
+      <div class="card-icon">💨</div>
+      <div class="card-title">DRIFT ARENA</div>
+      <div class="card-desc">Tokyo neon theme. Score points by drifting hard through corners. Hot zones cycle around track every 30 sec giving ×3 multiplier. Chain drifts for combo.</div>
+      <span class="card-tag tag-game">SCORE ATTACK</span>
+    </a>
+    <a class="card gp" href="modes/grand-prix.html">
+      <div class="card-icon">🏆</div>
+      <div class="card-title">GRAND PRIX</div>
+      <div class="card-desc">5-lap race on a rainbow road. Drive through item boxes: mushroom boost, banana peel, shield, lightning strike. First to finish wins.</div>
+      <span class="card-tag tag-game">5-LAP RACE</span>
+    </a>
+    <a class="card tron" href="modes/tron.html">
+      <div class="card-icon">⚡</div>
+      <div class="card-title">TRON TRAILS</div>
+      <div class="card-desc">Pitch black venue. Every kart leaves a permanent neon trail. Cross any other kart's trail and lose a life. 3 lives each. Last kart standing wins.</div>
+      <span class="card-tag tag-game">LAST STANDING</span>
+    </a>
+    <a class="card lit" href="modes/last-one-lit.html">
+      <div class="card-icon">💡</div>
+      <div class="card-title">LAST ONE LIT</div>
+      <div class="card-desc">Complete darkness. Each kart has a shrinking spotlight. Drive into another kart's spotlight and yours shrinks 3× faster. Last kart with any light wins. Your TikTok mode.</div>
+      <span class="card-tag tag-game">SURVIVAL</span>
+    </a>
+    <a class="card" href="#" onclick="alert('Bomb Tag coming soon — see game design notes in chat for rules.');return false" style="opacity:.5">
+      <div class="card-icon">💣</div>
+      <div class="card-title">BOMB TAG <small style="font-size:10px;color:var(--muted)">(coming)</small></div>
+      <div class="card-desc">One kart carries a bomb. Get close to transfer it. Holder when timer hits zero loses. Tag your way to safety.</div>
+      <span class="card-tag tag-game">COMING SOON</span>
+    </a>
+  </div>
+
+  <div class="section-label">Operations & Tools</div>
+  <div class="grid grid-3">
+    <a class="card" href="app/index.html">
+      <div class="card-icon">📱</div>
+      <div class="card-title">PLAYER APP</div>
+      <div class="card-desc">Player-facing web app prototype. Profile, leaderboards, race history, bookings, achievements. Mock data — full UX flow.</div>
+      <span class="card-tag tag-tool">PLAYER FACING</span>
+    </a>
+    <a class="card" href="operator/index.html">
+      <div class="card-icon">🎮</div>
+      <div class="card-title">OPERATOR DASHBOARD</div>
+      <div class="card-desc">Staff race-control panel. Select mode, start/pause/stop races, monitor kart battery + signal, event log, schedule view, emergency kill-switch.</div>
+      <span class="card-tag tag-ops">STAFF ONLY</span>
+    </a>
+    <a class="card" href="layout/index.html">
+      <div class="card-icon">🗺</div>
+      <div class="card-title">VENUE LAYOUT</div>
+      <div class="card-desc">Top-down SVG diagram of the full venue. Track shape, projector positions + coverage cones, camera FoVs, power runs, pit lane, café. Toggle layers.</div>
+      <span class="card-tag tag-tool">TECHNICAL</span>
+    </a>
+  </div>
+
+  <div class="section-label" style="margin-top:36px">How It All Connects</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;font-size:12px;line-height:1.9;color:var(--muted)">
+    <pre style="font-family:inherit;white-space:pre-wrap;color:#888">
+[Real karts w/ ArUco roof markers]
+          │
+          ▼  overhead cameras (2×)
+[Python tracking service]  ──── ArUco detection, 30–60 Hz
+          │
+          ▼  UDP stream  (kart_id, x, y, heading, t)
+[Unity Game Server]  ──────────── race rules, scoring, AI events, power-ups
+          │                         (same rules as this browser prototype)
+    ┌─────┴───────┐
+    ▼             ▼
+[Projection    [Player App / Leaderboard]
+ renderer]      Supabase + Next.js
+ Unity cam →
+ 4 projectors
+ (MadMapper blend)
+
+Everything in this prototype folder = the rules layer.
+Unity replaces the browser canvas. Projectors replace your monitor.
+The player app and operator dashboard are production-ready designs.
+    </pre>
+  </div>
+
+  <div class="section-label" style="margin-top:36px">Shared Code</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;font-size:12px;color:var(--muted);line-height:1.8">
+    All 5 game modes share <strong style="color:var(--text)">engine.js</strong> — a single file containing:
+    track geometry, kart physics, AI waypoint following, input handling, shared render helpers.
+    Each mode adds only its specific rules (~200–300 lines). When porting to Unity, <code style="color:#f7c948">engine.js</code>
+    becomes a set of C# classes — the logic is identical, only the syntax changes.
+  </div>
+</main>
+
+<footer>ZIKJ PROTOTYPE · PHASE 1 · BROWSER BUILD · NO UNITY REQUIRED</footer>
+
+</body>
+</html>

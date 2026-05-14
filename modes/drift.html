@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DRIFT ARENA — Karting Prototype</title>
+<style>
+  :root{--accent:#e040fb;--hot:#ff9100;--panel:rgba(8,8,16,0.9)}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#06030f;color:#f0f0f0;font-family:ui-monospace,monospace;overflow:hidden}
+  #stage{position:relative;width:1280px;height:720px;margin:0 auto}
+  canvas{display:block}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;text-align:center;z-index:10}
+  .overlay.hidden{display:none}
+  .panel{padding:32px 48px;border:1px solid #3a1060;border-radius:8px;background:var(--panel);max-width:560px}
+  h1{letter-spacing:.25em;margin:0 0 8px;font-size:48px;color:var(--accent);text-shadow:0 0 28px rgba(224,64,251,.7)}
+  h2{letter-spacing:.2em;margin:0 0 12px;font-size:26px}
+  p{line-height:1.6;margin:8px 0;color:#ccc}
+  ul{text-align:left;line-height:1.8;color:#bbb}
+  .btnrow{display:flex;gap:12px;justify-content:center;margin-top:20px}
+  button{background:var(--accent);color:#000;border:none;padding:12px 26px;font-family:inherit;font-size:15px;letter-spacing:.15em;cursor:pointer;border-radius:4px;font-weight:bold}
+  button.sec{background:#333;color:#fff}
+  button:hover{filter:brightness(1.18)}
+  #hud{position:absolute;top:12px;left:12px;z-index:5;pointer-events:none;font-size:13px}
+  #hud>div{background:var(--panel);padding:6px 12px;margin-bottom:4px;border-radius:4px;border-left:3px solid #555;min-width:230px}
+  #score{border-left-color:var(--accent)!important}
+  #combo{border-left-color:var(--hot)!important}
+  #back{position:absolute;top:12px;right:12px;z-index:5;background:var(--panel);padding:6px 14px;font-size:12px;border-radius:4px;color:#888;text-decoration:none;border:1px solid #333}
+  #back:hover{color:#fff}
+  #help{position:absolute;bottom:12px;right:12px;z-index:5;background:var(--panel);padding:6px 12px;font-size:11px;border-radius:4px;color:#888}
+  .scrim{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:64px;letter-spacing:.3em;color:#fff;text-shadow:0 0 30px #000;pointer-events:none;z-index:4}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="1280" height="720"></canvas>
+  <a id="back" href="../index.html">← Hub</a>
+  <div id="hud">
+    <div id="timer">TIME — 3:00</div>
+    <div id="score">SCORE — 0</div>
+    <div id="combo">COMBO ×1 | DRIFT 0°</div>
+    <div id="hotZone">HOT ZONE — COMING</div>
+    <div id="rank">RANK — 1 / 6</div>
+  </div>
+  <div id="help">WASD / Arrows · hold turns at speed to drift · SPACE pause · R restart</div>
+  <div id="intro" class="overlay">
+    <div class="panel">
+      <h1>DRIFT ARENA</h1>
+      <p>Score points by drifting (turning hard at speed).</p>
+      <p>Hot zones cycle around the track — drifting inside = <strong>×3 points</strong>.</p>
+      <p>Chain drifts without stopping for a <strong>combo multiplier</strong>.</p>
+      <ul>
+        <li><strong>WASD / Arrows</strong> — drive</li>
+        <li><strong>Turn hard while going fast</strong> — drifts & earns points</li>
+        <li><strong>Orange glow</strong> — hot zone, drifting inside scores ×3</li>
+      </ul>
+      <div class="btnrow">
+        <button id="playBtn">PLAY</button>
+        <button id="simBtn" class="sec">SIMULATE</button>
+      </div>
+    </div>
+  </div>
+  <div id="endcard" class="overlay hidden">
+    <div class="panel">
+      <h2 id="endTitle">FINAL SCORES</h2>
+      <div id="endStats" style="text-align:left;margin-top:14px;font-size:13px"></div>
+      <div class="btnrow">
+        <button id="replayBtn">PLAY AGAIN</button>
+        <button id="replaySimBtn" class="sec">SIMULATE</button>
+      </div>
+    </div>
+  </div>
+  <div id="pauseScrim" class="scrim" style="display:none">PAUSED</div>
+</div>
+<script src="../engine.js"></script>
+<script>
+'use strict';
+const E   = window.Engine;
+const ctx = document.getElementById('game').getContext('2d');
+
+const ROUND_DUR    = 180;
+const NUM_AI       = 5;
+const HOT_ZONE_DUR = 30;    // seconds per hot zone position
+const HOT_ZONE_ARC = 0.25;  // fraction of track length covered by hot zone
+const COMBO_DECAY  = 1.5;   // seconds with no drift before combo resets
+const DRIFT_THRESHOLD = 0.4; // angular velocity threshold to count as drift
+
+const state = {
+  karts: [], now: 0, paused: false, ended: false, running: false, sim: false,
+  hotZoneT: 0,  // centerline param of hot zone center
+};
+
+function startGame(sim) {
+  state.karts = []; state.now = 0;
+  state.paused = false; state.ended = false; state.running = true; state.sim = !!sim;
+  state.hotZoneT = Math.random();
+  const total = 1 + NUM_AI;
+  state.karts.push(new E.Kart(0, !sim, E.PLAYER_COLOR, E.spawnPositionForIndex(0, total)));
+  for (let i = 0; i < NUM_AI; i++)
+    state.karts.push(new E.Kart(i+1, false, E.COLORS[(i+1)%E.COLORS.length], E.spawnPositionForIndex(i+1, total)));
+  for (const k of state.karts) { k.tags.score = 0; k.tags.combo = 1; k.tags.lastDrift = -99; k.tags.driftAngle = 0; k.tags.driftSmoke = 0; }
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('endcard').classList.add('hidden');
+}
+
+// Check if a kart is inside the hot zone (by centerline proximity)
+function inHotZone(kart) {
+  let best = Infinity;
+  for (let i = 0; i < E.NUM_WP; i++) {
+    const t = i / E.NUM_WP;
+    let diff = Math.abs(t - state.hotZoneT);
+    if (diff > 0.5) diff = 1 - diff;
+    if (diff < HOT_ZONE_ARC / 2) {
+      const wp = E.WAYPOINTS[i];
+      const dx = kart.x - wp.x, dy = kart.y - wp.y;
+      best = Math.min(best, Math.sqrt(dx*dx + dy*dy));
+    }
+  }
+  return best < E.TRACK_HALF_W + 10;
+}
+
+function aiDrift(kart) {
+  // AI: follow waypoint but steer harder to rack up drift score
+  const wp = E.advanceWaypoint(kart);
+  const inp = E.aiInputToward(kart, wp, 0.95);
+  // Amplify steer slightly to generate drifting
+  if (inHotZone(kart)) inp.steer *= 1.4;
+  inp.steer = Math.max(-1, Math.min(1, inp.steer));
+  return inp;
+}
+
+function step(dt) {
+  state.now += dt;
+  // Advance hot zone
+  state.hotZoneT = (state.hotZoneT + dt / HOT_ZONE_DUR) % 1;
+
+  for (const k of state.karts) {
+    const inp = (k.isPlayer && !state.sim) ? E.playerInput() : aiDrift(k);
+    E.stepKart(k, dt, inp);
+
+    // Drift scoring
+    const speed = Math.abs(k.speed);
+    const angVelAbs = Math.abs(k.angVel);
+    const hot = inHotZone(k);
+    const isDrifting = speed > E.MAX_SPEED * 0.35 && angVelAbs > DRIFT_THRESHOLD;
+    k.tags.driftAngle = isDrifting ? angVelAbs * (180 / Math.PI) : 0;
+    k.tags.driftSmoke = isDrifting ? Math.min(1, k.tags.driftSmoke + dt * 3) : Math.max(0, k.tags.driftSmoke - dt * 4);
+
+    if (isDrifting) {
+      const elapsed = state.now - k.tags.lastDrift;
+      if (elapsed > COMBO_DECAY) k.tags.combo = 1;
+      else k.tags.combo = Math.min(8, k.tags.combo + dt * 0.5);
+      k.tags.lastDrift = state.now;
+      const pts = angVelAbs * speed * dt * 0.004 * k.tags.combo * (hot ? 3 : 1);
+      k.tags.score += pts;
+    }
+  }
+  E.resolveOverlaps(state.karts);
+  if (state.now >= ROUND_DUR) endRound();
+}
+
+function endRound() {
+  state.ended = true;
+  const sorted = [...state.karts].sort((a,b) => b.tags.score - a.tags.score);
+  const winner = sorted[0];
+  document.getElementById('endTitle').textContent = winner.isPlayer ? 'YOU WIN!' : `KART ${winner.id} WINS`;
+  document.getElementById('endStats').innerHTML = sorted.map((k,i) => {
+    const sw = `<span style="display:inline-block;width:10px;height:10px;background:${k.color};border-radius:2px;margin-right:8px"></span>`;
+    return `<div style="padding:3px 0">${i+1}. ${sw}${k.isPlayer?'YOU':`Kart ${k.id}`} — ${Math.floor(k.tags.score).toLocaleString()} pts</div>`;
+  }).join('');
+  document.getElementById('endcard').classList.remove('hidden');
+}
+
+function render() {
+  // Dark Tokyo-night background
+  ctx.fillStyle = '#06030f';
+  ctx.fillRect(0, 0, E.W, E.H);
+
+  // Grid floor lines for neon feel
+  ctx.strokeStyle = 'rgba(100,0,200,0.08)'; ctx.lineWidth = 1;
+  for (let x = 0; x < E.W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,E.H); ctx.stroke(); }
+  for (let y = 0; y < E.H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(E.W,y); ctx.stroke(); }
+
+  E.drawTrack(ctx, { fillColor:'#0e0818', wallColor:'#5c0080', showCenter:false });
+
+  // Hot zone overlay
+  const hotP = E.centerlineAt(state.hotZoneT);
+  const pulse = Math.sin(state.now * 3) * 0.25 + 0.75;
+  for (let i = 0; i < E.NUM_WP; i++) {
+    const t = i / E.NUM_WP;
+    let diff = Math.abs(t - state.hotZoneT);
+    if (diff > 0.5) diff = 1 - diff;
+    if (diff < HOT_ZONE_ARC / 2) {
+      const wp = E.WAYPOINTS[i], frac = 1 - (diff / (HOT_ZONE_ARC/2));
+      E.radialGlow(ctx, wp.x, wp.y, E.TRACK_HALF_W * 1.1,
+        `rgba(255,145,0,${0.18 * frac * pulse})`, 'rgba(255,145,0,0)');
+    }
+  }
+  // Hot zone label
+  ctx.fillStyle = `rgba(255,145,0,${pulse})`;
+  ctx.font = 'bold 13px ui-monospace,monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('HOT ZONE ×3', hotP.x, hotP.y - E.TRACK_HALF_W - 8);
+
+  // Trails — neon colored per kart
+  for (const k of state.karts) {
+    E.drawTrail(ctx, k, (f) => {
+      const col = k.color;
+      return `${col}${Math.floor(f * 180).toString(16).padStart(2,'0')}`;
+    }, 3);
+    // Smoke when drifting
+    if (k.tags.driftSmoke > 0.1) {
+      E.radialGlow(ctx, k.x, k.y, 22 * k.tags.driftSmoke,
+        `rgba(180,180,220,${k.tags.driftSmoke * 0.35})`, 'rgba(180,180,220,0)');
+    }
+  }
+
+  // Karts
+  for (const k of state.karts) {
+    const isDrifting = k.tags.driftAngle > 0;
+    const outline = isDrifting ? '#ff9100' : '#ffffff';
+    E.drawKartBase(ctx, k, k.color, outline, isDrifting ? 2.5 : 1.5);
+    // Score pop-up for player
+    if (k.isPlayer && isDrifting && state.now % 0.5 < 0.05) {
+      ctx.fillStyle = '#ff9100'; ctx.font = 'bold 16px ui-monospace,monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`+${(k.tags.driftAngle * 0.1).toFixed(0)}`, k.x, k.y - 30);
+    }
+  }
+}
+
+function updateHUD() {
+  document.getElementById('timer').textContent = 'TIME — ' + E.fmtTime(Math.max(0, ROUND_DUR - state.now));
+  const me = state.karts[0]; if (!me) return;
+  document.getElementById('score').textContent = `SCORE — ${Math.floor(me.tags.score).toLocaleString()}`;
+  const comboStr = me.tags.combo > 1 ? ` ×${me.tags.combo.toFixed(1)}` : ' ×1';
+  const driftStr = me.tags.driftAngle > 0 ? ` | DRIFTING ${me.tags.driftAngle.toFixed(0)}°` : '';
+  document.getElementById('combo').textContent = `COMBO${comboStr}${driftStr}`;
+  const inHot = inHotZone(me);
+  document.getElementById('hotZone').textContent = inHot ? 'HOT ZONE — ACTIVE ×3' : 'HOT ZONE — SEEK IT';
+  const sorted = [...state.karts].sort((a,b) => b.tags.score - a.tags.score);
+  const myRank = sorted.findIndex(k => k === me) + 1;
+  document.getElementById('rank').textContent = `RANK — ${myRank} / ${state.karts.length}`;
+}
+
+let last = performance.now() / 1000;
+function loop() {
+  const tNow = performance.now()/1000, dt = Math.min(.05, tNow-last); last = tNow;
+  if (state.running && !state.paused && !state.ended) step(dt);
+  if (state.running) { render(); updateHUD(); }
+  else { ctx.fillStyle='#06030f'; ctx.fillRect(0,0,E.W,E.H); E.drawTrack(ctx,{fillColor:'#0e0818',wallColor:'#5c0080'}); }
+  document.getElementById('pauseScrim').style.display = (state.running && state.paused) ? 'block' : 'none';
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === ' ' && state.running) { state.paused = !state.paused; e.preventDefault(); }
+  if (k === 'r') startGame(state.sim);
+  if (k === 's' && state.running) startGame(!state.sim);
+});
+document.getElementById('playBtn').onclick    = () => startGame(false);
+document.getElementById('simBtn').onclick     = () => startGame(true);
+document.getElementById('replayBtn').onclick  = () => startGame(false);
+document.getElementById('replaySimBtn').onclick = () => startGame(true);
+
+E.drawTrack(ctx, {fillColor:'#0e0818', wallColor:'#5c0080'}); loop();
+</script>
+</body>
+</html>

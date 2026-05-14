@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GRAND PRIX — Karting Prototype</title>
+<style>
+  :root{--accent:#f7c948;--panel:rgba(8,8,12,0.9)}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#060608;color:#f0f0f0;font-family:ui-monospace,monospace;overflow:hidden}
+  #stage{position:relative;width:1280px;height:720px;margin:0 auto}
+  canvas{display:block}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;text-align:center;z-index:10}
+  .overlay.hidden{display:none}
+  .panel{padding:32px 48px;border:1px solid #555;border-radius:8px;background:var(--panel);max-width:600px}
+  h1{letter-spacing:.2em;margin:0 0 8px;font-size:46px;color:var(--accent);text-shadow:0 0 20px rgba(247,201,72,.6)}
+  h2{letter-spacing:.2em;margin:0 0 12px;font-size:26px}
+  p{line-height:1.6;margin:8px 0;color:#ccc}
+  ul{text-align:left;line-height:1.8;color:#bbb}
+  .btnrow{display:flex;gap:12px;justify-content:center;margin-top:20px}
+  button{background:var(--accent);color:#000;border:none;padding:12px 26px;font-family:inherit;font-size:15px;letter-spacing:.15em;cursor:pointer;border-radius:4px;font-weight:bold}
+  button.sec{background:#333;color:#fff}
+  button:hover{filter:brightness(1.18)}
+  #hud{position:absolute;top:12px;left:12px;z-index:5;pointer-events:none;font-size:13px}
+  #hud>div{background:var(--panel);padding:6px 12px;margin-bottom:4px;border-radius:4px;border-left:3px solid #555;min-width:230px}
+  #itemBox{border-left-color:var(--accent)!important;font-size:18px;letter-spacing:.05em}
+  #back{position:absolute;top:12px;right:12px;z-index:5;background:var(--panel);padding:6px 14px;font-size:12px;border-radius:4px;color:#888;text-decoration:none;border:1px solid #333}
+  #back:hover{color:#fff}
+  #help{position:absolute;bottom:12px;right:12px;z-index:5;background:var(--panel);padding:6px 12px;font-size:11px;border-radius:4px;color:#888}
+  .scrim{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:64px;letter-spacing:.3em;color:#fff;text-shadow:0 0 30px #000;pointer-events:none;z-index:4}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="1280" height="720"></canvas>
+  <a id="back" href="../index.html">← Hub</a>
+  <div id="hud">
+    <div id="lapInfo">LAP — 1 / 5</div>
+    <div id="position">POSITION — 1 / 6</div>
+    <div id="itemBox">ITEM — NONE</div>
+    <div id="lastLap">LAST LAP — —</div>
+  </div>
+  <div id="help">WASD / Arrows · SPACE use item · R restart · S simulate</div>
+  <div id="intro" class="overlay">
+    <div class="panel">
+      <h1>GRAND PRIX</h1>
+      <p>5-lap race. Drive through glowing item boxes to collect power-ups. Use them with <strong>SPACE</strong>.</p>
+      <ul>
+        <li>🍄 <strong>Mushroom</strong> — 5 sec speed boost</li>
+        <li>🍌 <strong>Banana</strong> — drop behind you, slows next kart that hits it</li>
+        <li>🛡️ <strong>Shield</strong> — absorb one banana hit</li>
+        <li>⚡ <strong>Lightning</strong> — slow ALL opponents for 3 sec</li>
+      </ul>
+      <div class="btnrow">
+        <button id="playBtn">PLAY</button>
+        <button id="simBtn" class="sec">SIMULATE</button>
+      </div>
+    </div>
+  </div>
+  <div id="endcard" class="overlay hidden">
+    <div class="panel">
+      <h2 id="endTitle">RACE OVER</h2>
+      <div id="endStats" style="text-align:left;margin-top:14px;font-size:13px"></div>
+      <div class="btnrow">
+        <button id="replayBtn">RACE AGAIN</button>
+        <button id="replaySimBtn" class="sec">SIMULATE</button>
+      </div>
+    </div>
+  </div>
+  <div id="pauseScrim" class="scrim" style="display:none">PAUSED</div>
+</div>
+<script src="../engine.js"></script>
+<script>
+'use strict';
+const E   = window.Engine;
+const ctx = document.getElementById('game').getContext('2d');
+
+const TOTAL_LAPS  = 5;
+const NUM_AI      = 5;
+const NUM_BOXES   = 8;
+const BOX_RADIUS  = 20;
+const BOOST_SPEED = 1.30;
+const BOOST_TIME  = 5.0;
+const SLOW_FACTOR = 0.65;
+const SLOW_TIME   = 3.0;
+const BANANA_R    = 18;
+
+const ITEMS = ['mushroom','banana','shield','lightning'];
+const ITEM_EMOJI = { mushroom:'🍄', banana:'🍌', shield:'🛡️', lightning:'⚡', none:'—' };
+
+// Lap checkpoint: kart must cross start/finish going the right way
+const SF_X = E.STRAIGHT_LEFT + 60;
+
+const state = {
+  karts:[], boxes:[], bananas:[], now:0,
+  paused:false, ended:false, running:false, sim:false,
+  finishOrder: [],
+};
+
+function mkBoxes() {
+  state.boxes = [];
+  for (let i = 0; i < NUM_BOXES; i++) {
+    const t = (i / NUM_BOXES + 0.1) % 1;
+    const p = E.centerlineAt(t);
+    state.boxes.push({ x:p.x, y:p.y, active:true, respawnAt:0 });
+  }
+}
+
+function startGame(sim) {
+  state.karts=[]; state.bananas=[]; state.now=0; state.finishOrder=[];
+  state.paused=false; state.ended=false; state.running=true; state.sim=!!sim;
+  mkBoxes();
+  const total = 1 + NUM_AI;
+  state.karts.push(new E.Kart(0, !sim, E.PLAYER_COLOR, E.spawnPositionForIndex(0, total)));
+  for (let i = 0; i < NUM_AI; i++)
+    state.karts.push(new E.Kart(i+1, false, E.COLORS[(i+1)%E.COLORS.length], E.spawnPositionForIndex(i+1, total)));
+  for (const k of state.karts) {
+    k.tags.laps = 0; k.tags.item = 'none'; k.tags.shield = false;
+    k.tags.boostUntil = 0; k.tags.slowUntil = 0;
+    k.tags.lastSFX = -10; k.tags.lapTime = 0; k.tags.lastLap = null;
+    k.tags.finishTime = null; k.tags.crossedSF = false;
+  }
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('endcard').classList.add('hidden');
+}
+
+function lapProgress(kart) {
+  // Rough race position = laps + fraction around track (by nearest waypoint)
+  const wp = kart.aiWP;
+  return kart.tags.laps + wp / E.NUM_WP;
+}
+
+function useItem(kart) {
+  const item = kart.tags.item;
+  if (item === 'none') return;
+  if (item === 'mushroom') { kart.tags.boostUntil = state.now + BOOST_TIME; }
+  if (item === 'banana') {
+    // Drop behind kart
+    const bx = kart.x - Math.cos(kart.heading) * 24;
+    const by = kart.y - Math.sin(kart.heading) * 24;
+    state.bananas.push({ x:bx, y:by, bornAt:state.now });
+  }
+  if (item === 'lightning') {
+    for (const k of state.karts) {
+      if (k !== kart) k.tags.slowUntil = Math.max(k.tags.slowUntil, state.now + SLOW_TIME);
+    }
+  }
+  // shield stays until hit
+  if (item !== 'shield') kart.tags.item = 'none';
+  else kart.tags.shield = true; kart.tags.item = 'none';
+}
+
+function aiDecideItem(kart) {
+  if (kart.tags.item === 'none') return;
+  // AI uses item when it makes sense
+  if (kart.tags.item === 'mushroom' && state.now > 5) { kart.tags.item; useItem(kart); }
+  if (kart.tags.item === 'banana') useItem(kart);
+  if (kart.tags.item === 'lightning') { if (state.now - (kart.tags.usedLightning||0) > 20) { useItem(kart); kart.tags.usedLightning = state.now; } }
+  if (kart.tags.item === 'shield') useItem(kart);
+}
+
+function aiInputGP(kart) {
+  aiDecideItem(kart);
+  const ahead = kart.tags.laps < TOTAL_LAPS ? E.advanceWaypoint(kart) : null;
+  if (!ahead) return { throttle: 0, steer: 0 };
+  return E.aiInputToward(kart, ahead, 0.98);
+}
+
+function step(dt) {
+  state.now += dt;
+  // Respawn boxes
+  for (const b of state.boxes) if (!b.active && state.now >= b.respawnAt) b.active = true;
+
+  for (const k of state.karts) {
+    if (k.tags.finishTime != null) continue;
+    const inp = (k.isPlayer && !state.sim) ? E.playerInput() : aiInputGP(k);
+
+    // Speed modifiers
+    k.maxSpeedMul = 1;
+    if (state.now < k.tags.boostUntil) k.maxSpeedMul *= BOOST_SPEED;
+    if (state.now < k.tags.slowUntil)  k.maxSpeedMul *= SLOW_FACTOR;
+    if (state.now < (k.tags.stunnedUntil||0)) k.maxSpeedMul *= 0.4;
+
+    E.stepKart(k, dt, inp);
+
+    // Item box pickup
+    for (const b of state.boxes) {
+      if (!b.active) continue;
+      const dx = k.x - b.x, dy = k.y - b.y;
+      if (dx*dx + dy*dy < BOX_RADIUS*BOX_RADIUS && k.tags.item === 'none') {
+        k.tags.item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+        b.active = false; b.respawnAt = state.now + 5;
+        if (k.isPlayer && !state.sim) useItem(k);  // Wait for space; for AI immediate
+        else if (!k.isPlayer) aiDecideItem(k);
+      }
+    }
+
+    // Banana hits
+    for (let bi = state.bananas.length - 1; bi >= 0; bi--) {
+      const bn = state.bananas[bi];
+      const dx = k.x - bn.x, dy = k.y - bn.y;
+      if (dx*dx + dy*dy < BANANA_R*BANANA_R) {
+        if (k.tags.shield) { k.tags.shield = false; }
+        else { k.tags.stunnedUntil = state.now + 1.8; }
+        state.bananas.splice(bi, 1);
+      }
+    }
+
+    // Start/finish crossing (simple: crosses SF_X going right while on top straight)
+    const onTop = Math.abs(k.y - E.TOP_Y) < E.TRACK_HALF_W;
+    const nearSF = Math.abs(k.x - SF_X) < 30 && onTop;
+    if (nearSF && k.speed > 0 && !k.tags.crossedSF) {
+      k.tags.crossedSF = true;
+      if (state.now - (k.tags.lastSFX||0) > 3) {
+        k.tags.laps++;
+        k.tags.lastLap = state.now - k.tags.lapTime;
+        k.tags.lapTime = state.now;
+        k.tags.lastSFX = state.now;
+        if (k.tags.laps >= TOTAL_LAPS) {
+          k.tags.finishTime = state.now;
+          state.finishOrder.push(k);
+          if (state.finishOrder.length === state.karts.length) endRound();
+        }
+      }
+    } else if (!nearSF) k.tags.crossedSF = false;
+  }
+  E.resolveOverlaps(state.karts.filter(k=>k.tags.finishTime==null));
+
+  // Player SPACE = use item
+  if (E.keys.has(' ') && !state.sim && !state.paused) {
+    const me = state.karts[0];
+    if (me && me.tags.item !== 'none') { useItem(me); E.keys.delete(' '); }
+  }
+
+  // Remove old bananas (20 sec lifetime)
+  state.bananas = state.bananas.filter(b => state.now - b.bornAt < 20);
+
+  // End if 3 min elapsed
+  if (state.now >= 180 && !state.ended) endRound();
+}
+
+function endRound() {
+  if (state.ended) return;
+  state.ended = true;
+  // Sort: finished karts by time, then rest by lap progress
+  const finished = [...state.finishOrder];
+  const notFinished = state.karts.filter(k => k.tags.finishTime == null)
+    .sort((a,b) => lapProgress(b) - lapProgress(a));
+  const sorted = [...finished, ...notFinished];
+  const winner = sorted[0];
+  document.getElementById('endTitle').textContent = winner.isPlayer ? 'YOU WIN! 🏆' : `KART ${winner.id} WINS`;
+  document.getElementById('endStats').innerHTML = sorted.map((k,i) => {
+    const sw = `<span style="display:inline-block;width:10px;height:10px;background:${k.color};border-radius:2px;margin-right:8px"></span>`;
+    const status = k.tags.finishTime != null ? `finished ${E.fmtTime(k.tags.finishTime)}` : `lap ${k.tags.laps}`;
+    return `<div style="padding:3px 0">${i+1}. ${sw}${k.isPlayer?'YOU':`Kart ${k.id}`} — ${status}</div>`;
+  }).join('');
+  document.getElementById('endcard').classList.remove('hidden');
+}
+
+// Render rainbow road track tiles
+function drawRainbowTrack() {
+  const cols = ['#ff4466','#ff9900','#f7c948','#44ee66','#4499ff','#dd44ff'];
+  const seg = 60;
+  for (let i = 0; i < E.NUM_WP; i++) {
+    const a = E.WAYPOINTS[i], b = E.WAYPOINTS[(i+1)%E.NUM_WP];
+    const col = cols[Math.floor((i / E.NUM_WP) * cols.length * 3) % cols.length];
+    ctx.strokeStyle = col + '18';
+    ctx.lineWidth = E.TRACK_HALF_W * 2;
+    ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+}
+
+function render() {
+  ctx.fillStyle = '#060608';
+  ctx.fillRect(0, 0, E.W, E.H);
+  drawRainbowTrack();
+  E.drawTrack(ctx, { fillColor:'rgba(0,0,0,0)', wallColor:'#ffffff', showCenter:false, showStartLine:false });
+
+  // Start/finish line
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  for (let i = 0; i < 6; i++) {
+    const y = E.TOP_Y - E.TRACK_HALF_W + i * (E.TRACK_HALF_W*2/6);
+    ctx.fillRect(SF_X - 4, y, 8, E.TRACK_HALF_W*2/6 - 2);
+    if (i%2===0) ctx.fillRect(SF_X + 4, y, 8, E.TRACK_HALF_W*2/6 - 2);
+  }
+
+  // Item boxes
+  for (const b of state.boxes) {
+    if (!b.active) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2;
+      ctx.strokeRect(b.x-BOX_RADIUS, b.y-BOX_RADIUS, BOX_RADIUS*2, BOX_RADIUS*2);
+      continue;
+    }
+    const pulse = Math.sin(state.now*4)*0.2+0.8;
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(state.now * 1.5);
+    const g = ctx.createLinearGradient(-BOX_RADIUS,-BOX_RADIUS,BOX_RADIUS,BOX_RADIUS);
+    g.addColorStop(0,'#f7c948'); g.addColorStop(0.5,'#fff'); g.addColorStop(1,'#f7c948');
+    ctx.fillStyle = g; ctx.globalAlpha = pulse;
+    ctx.fillRect(-BOX_RADIUS,-BOX_RADIUS,BOX_RADIUS*2,BOX_RADIUS*2);
+    ctx.globalAlpha=1; ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.font=`bold ${BOX_RADIUS}px serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('?',0,2);
+    ctx.restore();
+  }
+
+  // Bananas
+  for (const bn of state.bananas) {
+    ctx.save(); ctx.translate(bn.x, bn.y);
+    ctx.font='20px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🍌',0,0);
+    ctx.restore();
+  }
+
+  // Trails
+  for (const k of state.karts)
+    E.drawTrail(ctx, k, (f) => `rgba(255,255,255,${f*0.08})`, 2);
+
+  // Karts
+  for (const k of state.karts) {
+    const isBoosted = state.now < k.tags.boostUntil;
+    const isSlowed  = state.now < k.tags.slowUntil;
+    const isStunned = state.now < (k.tags.stunnedUntil||0);
+    const outline = isStunned ? '#ff4466' : isBoosted ? '#f7c948' : isSlowed ? '#4499ff' : '#ffffff';
+    E.drawKartBase(ctx, k, k.color, outline, (isBoosted||isStunned||isSlowed) ? 2.5 : 1.5);
+    if (k.tags.shield) {
+      ctx.strokeStyle='rgba(100,200,255,0.6)'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(k.x,k.y,E.KART_LEN*0.9,0,Math.PI*2); ctx.stroke();
+    }
+    if (isBoosted) {
+      ctx.save(); ctx.translate(k.x,k.y); ctx.rotate(k.heading);
+      const g=ctx.createLinearGradient(-E.KART_LEN/2-32,0,-E.KART_LEN/2,0);
+      g.addColorStop(0,'rgba(247,201,72,0)'); g.addColorStop(1,'rgba(247,201,72,.9)');
+      ctx.fillStyle=g; ctx.fillRect(-E.KART_LEN/2-32,-E.KART_WID/2+1,32,E.KART_WID-2); ctx.restore();
+    }
+    // Lap counter badge
+    ctx.fillStyle='rgba(0,0,0,.7)';
+    ctx.fillRect(k.x-12, k.y-E.KART_LEN-18, 24, 14);
+    ctx.fillStyle='#fff'; ctx.font='bold 10px ui-monospace,monospace';
+    ctx.textAlign='center';
+    ctx.fillText(`L${k.tags.laps+1}/${TOTAL_LAPS}`, k.x, k.y-E.KART_LEN-7);
+  }
+
+  // Lightning flash overlay
+  const lightning = state.karts.filter(k=>state.now < k.tags.slowUntil);
+  if (lightning.length && !state.sim) {
+    ctx.fillStyle=`rgba(68,153,255,${0.05+0.03*Math.sin(state.now*20)})`;
+    ctx.fillRect(0,0,E.W,E.H);
+  }
+}
+
+function updateHUD() {
+  const me = state.karts[0]; if (!me) return;
+  document.getElementById('lapInfo').textContent = `LAP — ${Math.min(me.tags.laps+1,TOTAL_LAPS)} / ${TOTAL_LAPS}`;
+  const sorted = [...state.karts].sort((a,b)=>lapProgress(b)-lapProgress(a));
+  const myPos = sorted.findIndex(k=>k===me)+1;
+  document.getElementById('position').textContent=`POSITION — ${myPos} / ${state.karts.length}`;
+  document.getElementById('itemBox').textContent = `ITEM — ${ITEM_EMOJI[me.tags.item]||me.tags.item.toUpperCase()}`;
+  document.getElementById('lastLap').textContent = me.tags.lastLap ? `LAST LAP — ${me.tags.lastLap.toFixed(2)}s` : 'LAST LAP — —';
+}
+
+let last = performance.now()/1000;
+function loop() {
+  const tNow=performance.now()/1000, dt=Math.min(.05,tNow-last); last=tNow;
+  if (state.running && !state.paused && !state.ended) step(dt);
+  if (state.running) { render(); updateHUD(); }
+  else { ctx.fillStyle='#060608'; ctx.fillRect(0,0,E.W,E.H); drawRainbowTrack(); E.drawTrack(ctx,{fillColor:'rgba(0,0,0,0)',wallColor:'#fff'}); }
+  document.getElementById('pauseScrim').style.display=(state.running&&state.paused)?'block':'none';
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k===' '&&state.running&&!state.sim){state.paused=!state.paused;e.preventDefault();}
+  if(k==='r') startGame(state.sim);
+  if(k==='s'&&state.running) startGame(!state.sim);
+});
+document.getElementById('playBtn').onclick=()=>startGame(false);
+document.getElementById('simBtn').onclick=()=>startGame(true);
+document.getElementById('replayBtn').onclick=()=>startGame(false);
+document.getElementById('replaySimBtn').onclick=()=>startGame(true);
+
+drawRainbowTrack(); E.drawTrack(ctx,{fillColor:'rgba(0,0,0,0)',wallColor:'#fff'}); loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LAST ONE LIT — Karting Prototype</title>
+<style>
+  :root{--accent:#ffd042;--panel:rgba(2,2,4,0.95)}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#020204;color:#f0f0f0;font-family:ui-monospace,monospace;overflow:hidden}
+  #stage{position:relative;width:1280px;height:720px;margin:0 auto}
+  canvas{display:block}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;text-align:center;z-index:10}
+  .overlay.hidden{display:none}
+  .panel{padding:32px 48px;border:1px solid #443300;border-radius:8px;background:var(--panel);max-width:560px}
+  h1{letter-spacing:.2em;margin:0 0 8px;font-size:46px;color:var(--accent);text-shadow:0 0 28px rgba(255,208,66,.8)}
+  h2{letter-spacing:.2em;margin:0 0 12px;font-size:26px}
+  p{line-height:1.6;margin:8px 0;color:#bbb}
+  ul{text-align:left;line-height:1.8;color:#bbb}
+  .btnrow{display:flex;gap:12px;justify-content:center;margin-top:20px}
+  button{background:var(--accent);color:#000;border:none;padding:12px 26px;font-family:inherit;font-size:15px;letter-spacing:.15em;cursor:pointer;border-radius:4px;font-weight:bold}
+  button.sec{background:#222;color:#aaa}
+  button:hover{filter:brightness(1.18)}
+  #hud{position:absolute;top:12px;left:12px;z-index:5;pointer-events:none;font-size:13px}
+  #hud>div{background:var(--panel);padding:6px 12px;margin-bottom:4px;border-radius:4px;border-left:3px solid #553300;min-width:230px}
+  #lightRow{border-left-color:var(--accent)!important}
+  #back{position:absolute;top:12px;right:12px;z-index:5;background:var(--panel);padding:6px 14px;font-size:12px;border-radius:4px;color:#888;text-decoration:none;border:1px solid #333}
+  #back:hover{color:#ffd}
+  #help{position:absolute;bottom:12px;right:12px;z-index:5;background:var(--panel);padding:6px 12px;font-size:11px;border-radius:4px;color:#888}
+  .scrim{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:64px;letter-spacing:.3em;color:#ffd042;text-shadow:0 0 40px #ffd042;pointer-events:none;z-index:4}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="1280" height="720"></canvas>
+  <a id="back" href="../index.html">← Hub</a>
+  <div id="hud">
+    <div id="timer">TIME — 3:00</div>
+    <div id="lightRow">YOUR LIGHT — 100%</div>
+    <div id="aliveCount">STILL LIT — 6 / 6</div>
+    <div id="rank">RANK — 1 / 6</div>
+  </div>
+  <div id="help">WASD / Arrows · stay in your spotlight · avoid others' · R restart · S simulate</div>
+  <div id="intro" class="overlay">
+    <div class="panel">
+      <h1>LAST ONE LIT</h1>
+      <p>Pitch dark. Every kart has a spotlight that shrinks over time.</p>
+      <p>Drive into another kart's spotlight → yours shrinks <strong>3× faster</strong>.</p>
+      <p>Spotlight reaches zero → you're out. Last kart with any light wins.</p>
+      <ul>
+        <li>Your spotlight is <strong>brighter</strong> than AI spotlights</li>
+        <li>Watch for fading rings — karts almost out</li>
+        <li>Stay isolated and your light lasts longest</li>
+      </ul>
+      <div class="btnrow">
+        <button id="playBtn">PLAY</button>
+        <button id="simBtn" class="sec">SIMULATE</button>
+      </div>
+    </div>
+  </div>
+  <div id="endcard" class="overlay hidden">
+    <div class="panel">
+      <h2 id="endTitle">LIGHTS OUT</h2>
+      <div id="endStats" style="text-align:left;margin-top:14px;font-size:13px"></div>
+      <div class="btnrow">
+        <button id="replayBtn">PLAY AGAIN</button>
+        <button id="replaySimBtn" class="sec">SIMULATE</button>
+      </div>
+    </div>
+  </div>
+  <div id="pauseScrim" class="scrim" style="display:none">PAUSED</div>
+</div>
+<script src="../engine.js"></script>
+<script>
+'use strict';
+const E   = window.Engine;
+const ctx = document.getElementById('game').getContext('2d');
+
+const ROUND_DUR    = 180;
+const NUM_AI       = 5;
+const LIGHT_START  = 180;   // starting spotlight radius (px)
+const LIGHT_MIN    = 18;    // radius at which kart is eliminated
+const SHRINK_RATE  = 12;    // px/sec normal shrink
+const OVERLAP_MULT = 3.5;   // extra shrink when inside another spotlight
+const FLICKER_THRESHOLD = 40; // below this radius the spotlight flickers
+
+const state = {
+  karts:[], now:0, paused:false, ended:false, running:false, sim:false, eliminated:[],
+};
+
+function startGame(sim) {
+  state.karts=[]; state.eliminated=[]; state.now=0;
+  state.paused=false; state.ended=false; state.running=true; state.sim=!!sim;
+  const total=1+NUM_AI;
+  state.karts.push(new E.Kart(0,!sim,E.PLAYER_COLOR,E.spawnPositionForIndex(0,total)));
+  for(let i=0;i<NUM_AI;i++)
+    state.karts.push(new E.Kart(i+1,false,E.COLORS[(i+1)%E.COLORS.length],E.spawnPositionForIndex(i+1,total)));
+  for(const k of state.karts){ k.tags.light=LIGHT_START; k.tags.alive=true; k.tags.eliminatedAt=null; }
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('endcard').classList.add('hidden');
+}
+
+function aiLit(kart) {
+  // Stay away from others to preserve light; if isolated, follow racing line
+  const threats = state.karts.filter(k=>k!==kart&&k.tags.alive&&Math.hypot(k.x-kart.x,k.y-kart.y)<k.tags.light+kart.tags.light);
+  if(threats.length>0){
+    // Flee all threats
+    let fx=0,fy=0;
+    for(const t of threats){ const d=Math.max(1,Math.hypot(t.x-kart.x,t.y-kart.y)); fx+=(kart.x-t.x)/d; fy+=(kart.y-t.y)/d; }
+    const len=Math.max(1,Math.hypot(fx,fy));
+    const wp=E.WAYPOINTS[(kart.aiWP+3)%E.NUM_WP];
+    const target={x:wp.x+(fx/len)*120, y:wp.y+(fy/len)*120};
+    return E.aiInputToward(kart,target,0.95);
+  }
+  return E.aiInputToward(kart,E.advanceWaypoint(kart),0.9);
+}
+
+function step(dt) {
+  state.now+=dt;
+  for(const k of state.karts){
+    if(!k.tags.alive) continue;
+    const inp=(k.isPlayer&&!state.sim)?E.playerInput():aiLit(k);
+    E.stepKart(k,dt,inp);
+  }
+  E.resolveOverlaps(state.karts.filter(k=>k.tags.alive));
+
+  // Shrink spotlights
+  for(const k of state.karts){
+    if(!k.tags.alive) continue;
+    let shrink=SHRINK_RATE;
+    for(const other of state.karts){
+      if(other===k||!other.tags.alive) continue;
+      const d=Math.hypot(k.x-other.x,k.y-other.y);
+      if(d<other.tags.light) shrink+=SHRINK_RATE*(OVERLAP_MULT-1);
+    }
+    k.tags.light-=shrink*dt;
+    if(k.tags.light<=LIGHT_MIN){
+      k.tags.light=0; k.tags.alive=false; k.tags.eliminatedAt=state.now;
+      state.eliminated.push(k);
+      checkWin();
+    }
+  }
+
+  if(state.now>=ROUND_DUR&&!state.ended) forceEnd();
+}
+
+function checkWin(){
+  const alive=state.karts.filter(k=>k.tags.alive);
+  if(alive.length<=1){
+    state.ended=true;
+    const winner=alive[0];
+    showEnd(winner);
+  }
+}
+function forceEnd(){
+  state.ended=true;
+  const winner=state.karts.filter(k=>k.tags.alive).sort((a,b)=>b.tags.light-a.tags.light)[0]
+    ||state.karts.reduce((a,b)=>(a.tags.eliminatedAt||Infinity)>(b.tags.eliminatedAt||Infinity)?a:b);
+  showEnd(winner);
+}
+function showEnd(winner){
+  document.getElementById('endTitle').textContent=winner?.isPlayer?'YOU WIN! 💡':winner?`KART ${winner.id} WINS`:'EVERYONE OUT';
+  const sorted=[...state.karts].sort((a,b)=>(b.tags.eliminatedAt||state.now)-(a.tags.eliminatedAt||state.now));
+  document.getElementById('endStats').innerHTML=sorted.map((k,i)=>{
+    const sw=`<span style="display:inline-block;width:10px;height:10px;background:${k.color};border-radius:2px;margin-right:8px"></span>`;
+    const st=k.tags.alive?`survived (${k.tags.light.toFixed(0)}px light)`:`out at ${(k.tags.eliminatedAt||0).toFixed(1)}s`;
+    return `<div style="padding:3px 0">${i+1}. ${sw}${k.isPlayer?'YOU':`Kart ${k.id}`} — ${st}</div>`;
+  }).join('');
+  document.getElementById('endcard').classList.remove('hidden');
+}
+
+function render(){
+  // Full black background
+  ctx.fillStyle='#020204';
+  ctx.fillRect(0,0,E.W,E.H);
+
+  // Draw spotlights using composite operations so only lit areas are visible
+  // Step 1: draw track ghosted in spotlit areas
+  // Use a temp canvas approach: draw spotlights as a mask
+  // Actually simpler: draw spots as radial gradients on dark background
+  // The floor under each spotlight
+  ctx.save();
+  for(const k of state.karts){
+    if(!k.tags.alive||k.tags.light<=0) continue;
+    const r=k.tags.light;
+    const flicker = r<FLICKER_THRESHOLD ? (Math.sin(state.now*20)*.3+.7) : 1;
+    const isMe = k.isPlayer&&!state.sim;
+    const alpha = isMe ? 0.92*flicker : 0.65*flicker;
+    const grad=ctx.createRadialGradient(k.x,k.y,0,k.x,k.y,r);
+    grad.addColorStop(0, `rgba(255,240,180,${alpha})`);
+    grad.addColorStop(0.4, `rgba(200,180,100,${alpha*0.6})`);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle=grad;
+    ctx.beginPath(); ctx.arc(k.x,k.y,r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // Track visible inside spotlights (draw track faintly, it blends with spotlight tint)
+  // We clip to spotlight union — too complex; instead just overlay faint track
+  ctx.globalAlpha=0.08;
+  E.drawTrack(ctx,{fillColor:'#aaa',wallColor:'#fff',showCenter:false,showStartLine:false});
+  ctx.globalAlpha=1;
+
+  // Spotlight edge rings
+  for(const k of state.karts){
+    if(!k.tags.alive||k.tags.light<=0) continue;
+    const r=k.tags.light;
+    const flicker=r<FLICKER_THRESHOLD?(Math.sin(state.now*18)*.4+.6):1;
+    ctx.strokeStyle=`${k.color}${Math.floor(60*flicker).toString(16).padStart(2,'0')}`;
+    ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(k.x,k.y,r,0,Math.PI*2); ctx.stroke();
+    // Shrink warning
+    if(r<80){
+      const warnAlpha=(1-r/80)*0.6*flicker;
+      ctx.strokeStyle=`rgba(255,80,80,${warnAlpha})`; ctx.lineWidth=6;
+      ctx.beginPath(); ctx.arc(k.x,k.y,r,0,Math.PI*2); ctx.stroke();
+    }
+  }
+
+  // Karts
+  for(const k of state.karts){
+    if(!k.tags.alive) continue;
+    E.drawKartBase(ctx,k,k.color,k.color,2);
+  }
+  // Dead kart ghosts (faint)
+  for(const k of state.karts){
+    if(k.tags.alive) continue;
+    ctx.save(); ctx.globalAlpha=0.15;
+    E.drawKartBase(ctx,k,'#888','#888',1);
+    ctx.restore();
+  }
+}
+
+function updateHUD(){
+  document.getElementById('timer').textContent='TIME — '+E.fmtTime(Math.max(0,ROUND_DUR-state.now));
+  const alive=state.karts.filter(k=>k.tags.alive).length;
+  document.getElementById('aliveCount').textContent=`STILL LIT — ${alive} / ${state.karts.length}`;
+  const me=state.karts[0]; if(!me) return;
+  const pct=Math.max(0,(me.tags.light/LIGHT_START)*100).toFixed(0);
+  document.getElementById('lightRow').textContent=`YOUR LIGHT — ${pct}%${!me.tags.alive?' (OUT)':me.tags.light<60?' ⚠':''}`;
+  const sorted=[...state.karts.filter(k=>k.tags.alive)].sort((a,b)=>b.tags.light-a.tags.light);
+  const rank=sorted.findIndex(k=>k===me)+1;
+  document.getElementById('rank').textContent=me.tags.alive?`RANK (by light) — ${rank} / ${alive}`:'RANK — ELIMINATED';
+}
+
+let last=performance.now()/1000;
+function loop(){
+  const tNow=performance.now()/1000,dt=Math.min(.05,tNow-last);last=tNow;
+  if(state.running&&!state.paused&&!state.ended) step(dt);
+  if(state.running){render();updateHUD();}
+  else{ctx.fillStyle='#020204';ctx.fillRect(0,0,E.W,E.H);}
+  document.getElementById('pauseScrim').style.display=(state.running&&state.paused)?'block':'none';
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k===' '&&state.running){state.paused=!state.paused;e.preventDefault();}
+  if(k==='r') startGame(state.sim);
+  if(k==='s'&&state.running) startGame(!state.sim);
+});
+document.getElementById('playBtn').onclick=()=>startGame(false);
+document.getElementById('simBtn').onclick=()=>startGame(true);
+document.getElementById('replayBtn').onclick=()=>startGame(false);
+document.getElementById('replaySimBtn').onclick=()=>startGame(true);
+
+loop();
+</script>
+</body>
+</html>

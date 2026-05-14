@@ -1,0 +1,65 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+.cache/
+
+# Node / web tooling, if added later
+node_modules/
+dist/
+build/
+.next/
+coverage/
+.env
+.env.*
+!.env.example
+
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+
+# Unity generated files
+*.csproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+
+# Unity crash reports and profiler data
+sysinfo.txt
+*.stackdump
+*.traceevents
+
+# Visual Studio / Rider
+.vs/
+.gradle/
+ExportedObj/
+
+# Large local media/build artifacts
+*.mp4
+*.mov
+*.avi
+*.zip
+*.7z
+*.rar

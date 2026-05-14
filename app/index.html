@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZIKJ — Player App</title>
+<style>
+  :root{
+    --bg:#0a0b10; --surface:#12141c; --border:#1e2030;
+    --accent:#f7c948; --accent2:#ff3344; --accent3:#42d6ff;
+    --text:#f0f0f0; --muted:#888; --panel:rgba(18,20,28,.95);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:ui-monospace,"SF Mono",monospace;min-height:100vh;display:flex;flex-direction:column}
+  /* ─── TOP BAR ─── */
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px}
+  .logo{font-size:22px;letter-spacing:.3em;color:var(--accent);font-weight:bold;text-shadow:0 0 16px rgba(247,201,72,.4)}
+  .topbar-right{display:flex;align-items:center;gap:16px}
+  .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ff3344,#f7c948);display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;color:#000}
+  .points-chip{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--accent)}
+  /* ─── NAV ─── */
+  .nav{background:var(--surface);border-bottom:1px solid var(--border);display:flex;overflow-x:auto}
+  .nav-tab{padding:12px 20px;font-size:13px;letter-spacing:.1em;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s}
+  .nav-tab:hover{color:var(--text)}
+  .nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  /* ─── MAIN ─── */
+  .main{flex:1;padding:24px;max-width:1100px;width:100%;margin:0 auto}
+  .page{display:none} .page.active{display:block}
+  /* ─── CARDS ─── */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}
+  .card-title{font-size:11px;letter-spacing:.15em;color:var(--muted);margin-bottom:12px;text-transform:uppercase}
+  /* ─── HERO PROFILE ─── */
+  .profile-hero{display:flex;gap:24px;align-items:center;margin-bottom:20px}
+  .profile-avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#ff3344,#f7c948);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;color:#000;flex-shrink:0}
+  .profile-name{font-size:24px;font-weight:bold;letter-spacing:.05em}
+  .profile-sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .badge-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .badge{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;letter-spacing:.08em}
+  .badge.gold{border-color:#f7c948;color:#f7c948}
+  .badge.red{border-color:#ff3344;color:#ff3344}
+  .badge.blue{border-color:#42d6ff;color:#42d6ff}
+  /* ─── STATS GRID ─── */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+  .stat-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:14px;text-align:center}
+  .stat-val{font-size:26px;font-weight:bold;color:var(--accent)}
+  .stat-label{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.1em;text-transform:uppercase}
+  /* ─── LEADERBOARD ─── */
+  .lb-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .lb-row:last-child{border-bottom:none}
+  .lb-rank{width:28px;font-weight:bold;color:var(--muted);text-align:center;font-size:13px}
+  .lb-rank.gold{color:#f7c948} .lb-rank.silver{color:#c0c0c0} .lb-rank.bronze{color:#cd7f32}
+  .lb-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;color:#000;flex-shrink:0}
+  .lb-name{flex:1;font-size:14px}
+  .lb-name small{display:block;font-size:10px;color:var(--muted);margin-top:1px}
+  .lb-score{font-weight:bold;color:var(--accent);font-size:14px;text-align:right}
+  .lb-score small{display:block;font-size:10px;color:var(--muted);font-weight:normal}
+  /* ─── RACE HISTORY ─── */
+  .race-row{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+  .race-row:last-child{border-bottom:none}
+  .mode-chip{border-radius:4px;padding:3px 10px;font-size:11px;font-weight:bold;letter-spacing:.08em;white-space:nowrap}
+  .mode-infected{background:#ff334422;color:#ff3344;border:1px solid #ff334440}
+  .mode-drift{background:#e040fb22;color:#e040fb;border:1px solid #e040fb40}
+  .mode-gp{background:#f7c94822;color:#f7c948;border:1px solid #f7c94840}
+  .mode-tron{background:#00f0ff22;color:#00f0ff;border:1px solid #00f0ff40}
+  .mode-lit{background:#ffd04222;color:#ffd042;border:1px solid #ffd04240}
+  .race-info{flex:1}
+  .race-info .main-line{font-size:13px}
+  .race-info .sub-line{font-size:11px;color:var(--muted);margin-top:2px}
+  .race-result{text-align:right;font-size:13px;font-weight:bold}
+  .race-result.win{color:#42ff88} .race-result.loss{color:var(--muted)}
+  /* ─── BOOKINGS ─── */
+  .booking-form{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:600px){.booking-form{grid-template-columns:1fr}}
+  .form-group label{display:block;font-size:11px;letter-spacing:.1em;color:var(--muted);margin-bottom:6px;text-transform:uppercase}
+  .form-group select,.form-group input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:13px}
+  .form-group select:focus,.form-group input:focus{outline:none;border-color:var(--accent)}
+  .form-full{grid-column:1/-1}
+  .btn{padding:10px 22px;border:none;border-radius:4px;font-family:inherit;font-size:13px;font-weight:bold;letter-spacing:.12em;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#000}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+  .btn:hover{filter:brightness(1.12)}
+  .booking-card{display:flex;gap:12px;align-items:center}
+  .booking-date{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 14px;text-align:center;flex-shrink:0;min-width:56px}
+  .booking-date .day{font-size:22px;font-weight:bold;color:var(--accent)}
+  .booking-date .month{font-size:10px;color:var(--muted)}
+  /* ─── ACHIEVEMENTS ─── */
+  .ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+  .ach-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;gap:12px;align-items:flex-start}
+  .ach-card.unlocked{border-color:#f7c94866}
+  .ach-icon{font-size:28px;flex-shrink:0}
+  .ach-name{font-size:13px;font-weight:bold}
+  .ach-desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+  .ach-card:not(.unlocked){opacity:.45}
+  /* ─── FOOTER ─── */
+  .back-link{position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--border);padding:8px 16px;border-radius:20px;color:var(--muted);text-decoration:none;font-size:12px}
+  .back-link:hover{color:var(--text)}
+  /* ─── PROGRESS BAR ─── */
+  .progress-bar{background:var(--border);border-radius:4px;height:6px;overflow:hidden;margin-top:8px}
+  .progress-fill{height:100%;border-radius:4px;background:var(--accent);transition:width .3s}
+  .xp-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">ZIKJ</div>
+  <div class="topbar-right">
+    <div class="points-chip">⭐ 4,820 pts</div>
+    <div class="avatar">MK</div>
+  </div>
+</div>
+<nav class="nav">
+  <div class="nav-tab active" data-page="profile">Profile</div>
+  <div class="nav-tab" data-page="leaderboard">Leaderboard</div>
+  <div class="nav-tab" data-page="history">Race History</div>
+  <div class="nav-tab" data-page="book">Book a Race</div>
+  <div class="nav-tab" data-page="achievements">Achievements</div>
+</nav>
+
+<div class="main">
+
+  <!-- PROFILE -->
+  <div class="page active" id="page-profile">
+    <div class="profile-hero">
+      <div class="profile-avatar">MK</div>
+      <div>
+        <div class="profile-name">Max Kartin</div>
+        <div class="profile-sub">Member since Jan 2026 · Silver tier</div>
+        <div class="badge-row">
+          <span class="badge gold">🏆 Tournament Winner</span>
+          <span class="badge red">☣ Infection Master</span>
+          <span class="badge blue">💨 Drift King</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Level Progress — Level 12</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:67%"></div></div>
+      <div class="xp-row"><span>3,350 XP</span><span>5,000 XP to Level 13</span></div>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:16px">
+      <div class="stat-box"><div class="stat-val">147</div><div class="stat-label">Races</div></div>
+      <div class="stat-box"><div class="stat-val">63%</div><div class="stat-label">Win Rate</div></div>
+      <div class="stat-box"><div class="stat-val">52.3s</div><div class="stat-label">Best Lap</div></div>
+      <div class="stat-box"><div class="stat-val">4,820</div><div class="stat-label">Points</div></div>
+      <div class="stat-box"><div class="stat-val">1,240</div><div class="stat-label">Drift Score</div></div>
+      <div class="stat-box"><div class="stat-val">29</div><div class="stat-label">People Infected</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Favourite Modes</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <span class="mode-chip mode-infected">INFECTED</span>
+        <span class="mode-chip mode-drift">DRIFT</span>
+        <span class="mode-chip mode-gp">GRAND PRIX</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Next Session</div>
+      <div class="booking-card">
+        <div class="booking-date"><div class="day">17</div><div class="month">MAY</div></div>
+        <div>
+          <div style="font-size:15px;font-weight:bold">Saturday Evening</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">19:30 — Group of 8 · VIP package</div>
+        </div>
+        <div style="margin-left:auto"><button class="btn btn-ghost" style="font-size:12px">View</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="page" id="page-leaderboard">
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="setLbFilter('overall',this)">Overall</button>
+      <button class="btn btn-ghost" onclick="setLbFilter('infected',this)">Infected</button>
+      <button class="btn btn-ghost" onclick="setLbFilter('drift',this)">Drift</button>
+      <button class="btn btn-ghost" onclick="setLbFilter('gp',this)">Grand Prix</button>
+      <button class="btn btn-ghost" onclick="setLbFilter('weekly',this)">This Week</button>
+    </div>
+    <div class="card">
+      <div class="card-title" id="lb-title">Overall Leaderboard</div>
+      <div id="lb-list"></div>
+    </div>
+  </div>
+
+  <!-- RACE HISTORY -->
+  <div class="page" id="page-history">
+    <div class="card">
+      <div class="card-title">Recent Races</div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- BOOK -->
+  <div class="page" id="page-book">
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">Book a Session</div>
+      <div class="booking-form">
+        <div class="form-group"><label>Date</label><input type="date" value="2026-05-17"></div>
+        <div class="form-group"><label>Time</label>
+          <select><option>17:00</option><option>18:00</option><option selected>19:30</option><option>21:00</option></select>
+        </div>
+        <div class="form-group"><label>Group Size</label>
+          <select><option>Solo (1)</option><option>2 players</option><option>4 players</option><option selected>8 players</option><option>Full track (12)</option></select>
+        </div>
+        <div class="form-group"><label>Package</label>
+          <select><option>Standard (3 races)</option><option selected>VIP (6 races + food)</option><option>Tournament (8 races)</option></select>
+        </div>
+        <div class="form-group form-full"><label>Preferred Game Modes</label>
+          <select><option>Let the operator decide</option><option>Infected + Grand Prix</option><option>Drift focus</option><option>All modes rotation</option></select>
+        </div>
+        <div class="form-full" style="display:flex;gap:12px">
+          <button class="btn btn-primary" onclick="bookNow()">Book Now</button>
+          <button class="btn btn-ghost">Add to Calendar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Upcoming Bookings</div>
+      <div class="race-row">
+        <div class="booking-date"><div class="day">17</div><div class="month">MAY</div></div>
+        <div class="race-info" style="margin-left:8px">
+          <div class="main-line">Saturday 19:30 — Group of 8</div>
+          <div class="sub-line">VIP Package · Confirmed ✓</div>
+        </div>
+        <button class="btn btn-ghost" style="font-size:12px">Cancel</button>
+      </div>
+      <div class="race-row">
+        <div class="booking-date"><div class="day">31</div><div class="month">MAY</div></div>
+        <div class="race-info" style="margin-left:8px">
+          <div class="main-line">Saturday 18:00 — Corporate Event</div>
+          <div class="sub-line">20 players · Tournament format · Pending</div>
+        </div>
+        <button class="btn btn-ghost" style="font-size:12px">View</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACHIEVEMENTS -->
+  <div class="page" id="page-achievements">
+    <div class="card">
+      <div class="card-title">Achievements — 12 / 30 unlocked</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:40%"></div></div>
+    </div>
+    <div class="ach-grid" id="ach-grid"></div>
+  </div>
+
+</div>
+<a class="back-link" href="../index.html">← Hub</a>
+
+<script>
+// ── NAV ──
+document.querySelectorAll('.nav-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('page-'+tab.dataset.page).classList.add('active');
+  });
+});
+
+// ── LEADERBOARD DATA ──
+const LB_DATA={
+  overall:[
+    {name:'Ghost_Racer',sub:'Level 18',pts:12400,races:230,color:'#ffd042'},
+    {name:'NeonViper',sub:'Level 16',pts:10800,races:198,color:'#ff42d6'},
+    {name:'Max Kartin',sub:'YOU · Level 12',pts:4820,races:147,color:'#42d6ff',isMe:true},
+    {name:'DriftLord99',sub:'Level 14',pts:9600,races:175,color:'#42ff88'},
+    {name:'Infecto',sub:'Level 11',pts:4200,races:130,color:'#d042ff'},
+    {name:'TrackKing',sub:'Level 15',pts:11200,races:205,color:'#ff8842'},
+    {name:'ZeroGrip',sub:'Level 10',pts:3800,races:118,color:'#ffd042'},
+    {name:'ArcadeAce',sub:'Level 13',pts:7100,races:160,color:'#ff3344'},
+  ],
+  drift:[
+    {name:'DriftLord99',sub:'Drift specialist',pts:24600,races:80,color:'#42ff88'},
+    {name:'Ghost_Racer',sub:'Level 18',pts:21000,races:95,color:'#ffd042'},
+    {name:'Max Kartin',sub:'YOU',pts:9200,races:47,color:'#42d6ff',isMe:true},
+    {name:'NeonViper',sub:'Smooth corners',pts:18400,races:76,color:'#ff42d6'},
+  ],
+  infected:[
+    {name:'Infecto',sub:'Infection specialist',pts:5800,races:60,color:'#d042ff'},
+    {name:'Max Kartin',sub:'YOU',pts:4820,races:52,color:'#42d6ff',isMe:true},
+    {name:'Ghost_Racer',sub:'Survivor',pts:4200,races:50,color:'#ffd042'},
+    {name:'NeonViper',sub:'Quick spreader',pts:3900,races:45,color:'#ff42d6'},
+  ],
+  gp:[
+    {name:'TrackKing',sub:'5-lap specialist',pts:8800,races:65,color:'#ff8842'},
+    {name:'ArcadeAce',sub:'Item master',pts:7600,races:60,color:'#ff3344'},
+    {name:'Ghost_Racer',sub:'Level 18',pts:7200,races:62,color:'#ffd042'},
+    {name:'Max Kartin',sub:'YOU',pts:3100,races:28,color:'#42d6ff',isMe:true},
+  ],
+  weekly:[
+    {name:'ZeroGrip',sub:'On a streak',pts:1400,races:12,color:'#ffd042'},
+    {name:'Max Kartin',sub:'YOU',pts:820,races:7,color:'#42d6ff',isMe:true},
+    {name:'NeonViper',sub:'Level 16',pts:1100,races:10,color:'#ff42d6'},
+  ],
+};
+
+function setLbFilter(key, btn){
+  document.querySelectorAll('#page-leaderboard .btn').forEach(b=>b.className='btn btn-ghost');
+  btn.className='btn btn-primary';
+  const labels={overall:'Overall Leaderboard',drift:'Drift Leaderboard',infected:'Infected Leaderboard',gp:'Grand Prix Leaderboard',weekly:'This Week'};
+  document.getElementById('lb-title').textContent=labels[key]||'Leaderboard';
+  renderLb(LB_DATA[key]||LB_DATA.overall);
+}
+
+function renderLb(data){
+  const sorted=[...data].sort((a,b)=>b.pts-a.pts);
+  const rankClass=['gold','silver','bronze'];
+  document.getElementById('lb-list').innerHTML=sorted.map((p,i)=>`
+    <div class="lb-row" ${p.isMe?'style="background:rgba(66,214,255,0.05);border-radius:4px;padding:10px 8px"':''}>
+      <div class="lb-rank ${rankClass[i]||''}">${i+1}</div>
+      <div class="lb-avatar" style="background:${p.color}">${p.name[0]}</div>
+      <div class="lb-name">${p.name}${p.isMe?' <span style="color:var(--accent3)">← you</span>':''}<small>${p.sub}</small></div>
+      <div class="lb-score">${p.pts.toLocaleString()} pts<small>${p.races} races</small></div>
+    </div>
+  `).join('');
+}
+renderLb(LB_DATA.overall);
+
+// ── RACE HISTORY ──
+const HISTORY=[
+  {mode:'infected',modeName:'INFECTED',date:'Today 21:14',result:'2nd',win:false,pts:'+120',detail:'14.2s clean · infected 2 players'},
+  {mode:'drift',modeName:'DRIFT',date:'Today 20:50',result:'1st 🏆',win:true,pts:'+340',detail:'Drift score: 8,420 · combo ×4.2'},
+  {mode:'gp',modeName:'GRAND PRIX',date:'Yesterday 19:30',result:'3rd',win:false,pts:'+85',detail:'Lap 5/5 · best lap 54.1s'},
+  {mode:'infected',modeName:'INFECTED',date:'Yesterday 19:10',result:'1st 🏆',win:true,pts:'+220',detail:'Never infected · last survivor'},
+  {mode:'tron',modeName:'TRON',date:'May 8 · 18:45',result:'4th',win:false,pts:'+40',detail:'3 lives → eliminated round 2'},
+  {mode:'lit',modeName:'LAST ONE LIT',date:'May 8 · 18:20',result:'1st 🏆',win:true,pts:'+280',detail:'Survived 2:47 · last light out'},
+  {mode:'drift',modeName:'DRIFT',date:'May 7 · 20:00',result:'2nd',win:false,pts:'+200',detail:'Drift score: 7,100'},
+  {mode:'gp',modeName:'GRAND PRIX',date:'May 7 · 19:30',result:'1st 🏆',win:true,pts:'+400',detail:'Best lap 52.3s — personal best'},
+];
+document.getElementById('history-list').innerHTML=HISTORY.map(r=>`
+  <div class="race-row">
+    <span class="mode-chip mode-${r.mode}">${r.modeName}</span>
+    <div class="race-info">
+      <div class="main-line">${r.date}</div>
+      <div class="sub-line">${r.detail}</div>
+    </div>
+    <div class="race-result ${r.win?'win':'loss'}">${r.result}<br><small style="color:var(--accent)">${r.pts}</small></div>
+  </div>
+`).join('');
+
+// ── ACHIEVEMENTS ──
+const ACHIEVEMENTS=[
+  {icon:'☣',name:'Patient Zero',desc:'Be the first infected kart and infect 3 others in one round',unlocked:true},
+  {icon:'🏆',name:'Untouchable',desc:'Complete an Infected round without ever being infected',unlocked:true},
+  {icon:'💨',name:'Drift King',desc:'Score 10,000+ drift points in a single round',unlocked:true},
+  {icon:'⚡',name:'Lightning Rod',desc:'Use the lightning power-up and hit all 5 opponents',unlocked:true},
+  {icon:'💡',name:'Last Light',desc:'Win Last One Lit with less than 20% spotlight remaining',unlocked:true},
+  {icon:'🎯',name:'Precision Trail',desc:'Win Tron without crossing anyone\'s trail in the final minute',unlocked:true},
+  {icon:'🏎',name:'Speed Demon',desc:'Set a lap record below 50 seconds',unlocked:false},
+  {icon:'🧲',name:'Magnet',desc:'Collect 20 item boxes in a single Grand Prix',unlocked:false},
+  {icon:'👻',name:'Ghost Lap',desc:'Beat your own ghost by more than 5 seconds',unlocked:false},
+  {icon:'🔥',name:'Combo Master',desc:'Maintain a ×6 drift combo for more than 8 seconds',unlocked:false},
+  {icon:'🗺',name:'Explorer',desc:'Play all 5 game modes in a single day',unlocked:false},
+  {icon:'🎉',name:'Party Starter',desc:'Play in a group of 10 or more people',unlocked:false},
+];
+document.getElementById('ach-grid').innerHTML=ACHIEVEMENTS.map(a=>`
+  <div class="ach-card ${a.unlocked?'unlocked':''}">
+    <div class="ach-icon">${a.icon}</div>
+    <div>
+      <div class="ach-name">${a.name}${a.unlocked?' ✓':''}</div>
+      <div class="ach-desc">${a.desc}</div>
+    </div>
+  </div>
+`).join('');
+
+// ── BOOKING ──
+function bookNow(){
+  alert('Booking confirmed! ✓\nYou\'ll receive a confirmation QR code by email.\n\n(This is a prototype — no real booking was made.)');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TRON TRAILS — Karting Prototype</title>
+<style>
+  :root{--accent:#00f0ff;--panel:rgba(0,4,16,0.92)}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#000408;color:#f0f0f0;font-family:ui-monospace,monospace;overflow:hidden}
+  #stage{position:relative;width:1280px;height:720px;margin:0 auto}
+  canvas{display:block}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;text-align:center;z-index:10}
+  .overlay.hidden{display:none}
+  .panel{padding:32px 48px;border:1px solid #004466;border-radius:8px;background:var(--panel);max-width:560px}
+  h1{letter-spacing:.25em;margin:0 0 8px;font-size:48px;color:var(--accent);text-shadow:0 0 30px rgba(0,240,255,.8)}
+  h2{letter-spacing:.2em;margin:0 0 12px;font-size:26px}
+  p{line-height:1.6;margin:8px 0;color:#aaa}
+  ul{text-align:left;line-height:1.8;color:#bbb}
+  .btnrow{display:flex;gap:12px;justify-content:center;margin-top:20px}
+  button{background:var(--accent);color:#000;border:none;padding:12px 26px;font-family:inherit;font-size:15px;letter-spacing:.15em;cursor:pointer;border-radius:4px;font-weight:bold}
+  button.sec{background:#112;color:#0af}
+  button:hover{filter:brightness(1.2)}
+  #hud{position:absolute;top:12px;left:12px;z-index:5;pointer-events:none;font-size:13px}
+  #hud>div{background:var(--panel);padding:6px 12px;margin-bottom:4px;border-radius:4px;border-left:3px solid #004466;min-width:220px}
+  #statusRow{border-left-color:var(--accent)!important}
+  #back{position:absolute;top:12px;right:12px;z-index:5;background:var(--panel);padding:6px 14px;font-size:12px;border-radius:4px;color:#888;text-decoration:none;border:1px solid #224}
+  #back:hover{color:#0af}
+  #help{position:absolute;bottom:12px;right:12px;z-index:5;background:var(--panel);padding:6px 12px;font-size:11px;border-radius:4px;color:#888}
+  .scrim{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:64px;letter-spacing:.3em;color:#0af;text-shadow:0 0 30px #0af;pointer-events:none;z-index:4}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="1280" height="720"></canvas>
+  <a id="back" href="../index.html">← Hub</a>
+  <div id="hud">
+    <div id="aliveCount">ALIVE — 6 / 6</div>
+    <div id="statusRow">STATUS — ALIVE</div>
+    <div id="lives">LIVES — ●●●</div>
+  </div>
+  <div id="help">WASD / Arrows · avoid all light trails · R restart · S simulate</div>
+  <div id="intro" class="overlay">
+    <div class="panel">
+      <h1>TRON</h1>
+      <p>Every kart leaves a permanent glowing trail. Cross any trail and you lose a life.</p>
+      <p>3 lives each. Last kart standing wins.</p>
+      <ul>
+        <li>Your trail colour is <strong>cyan</strong></li>
+        <li>Your own trail is safe — others are not</li>
+        <li>Crossing a trail: 2 sec freeze + -1 life</li>
+      </ul>
+      <div class="btnrow">
+        <button id="playBtn">PLAY</button>
+        <button id="simBtn" class="sec">SIMULATE</button>
+      </div>
+    </div>
+  </div>
+  <div id="endcard" class="overlay hidden">
+    <div class="panel">
+      <h2 id="endTitle">GAME OVER</h2>
+      <div id="endStats" style="text-align:left;margin-top:14px;font-size:13px"></div>
+      <div class="btnrow">
+        <button id="replayBtn">PLAY AGAIN</button>
+        <button id="replaySimBtn" class="sec">SIMULATE</button>
+      </div>
+    </div>
+  </div>
+  <div id="pauseScrim" class="scrim" style="display:none">PAUSED</div>
+</div>
+<script src="../engine.js"></script>
+<script>
+'use strict';
+const E   = window.Engine;
+const ctx = document.getElementById('game').getContext('2d');
+
+const LIVES      = 3;
+const FREEZE_DUR = 2.0;
+const TRAIL_THICK = 5;      // px
+const MAX_TRAIL_SEGMENTS = 600;  // per kart
+
+const state = {
+  karts:[], now:0, paused:false, ended:false, running:false, sim:false,
+};
+
+function startGame(sim) {
+  state.karts=[]; state.now=0; state.paused=false; state.ended=false; state.running=true; state.sim=!!sim;
+  const total=1+5;
+  state.karts.push(new E.Kart(0,!sim,E.PLAYER_COLOR,E.spawnPositionForIndex(0,total)));
+  for(let i=0;i<5;i++)
+    state.karts.push(new E.Kart(i+1,false,E.COLORS[(i+1)%E.COLORS.length],E.spawnPositionForIndex(i+1,total)));
+  for(const k of state.karts){
+    k.tags.lives=LIVES; k.tags.frozenUntil=0; k.tags.alive=true;
+    k.tags.fullTrail=[{x:k.x,y:k.y}];  // persistent trail (separate from engine's short trail)
+  }
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('endcard').classList.add('hidden');
+}
+
+// Check if point (px,py) crosses segment (ax,ay)-(bx,by) within threshold
+function pointNearSegment(px,py,ax,ay,bx,by,thresh) {
+  const dx=bx-ax, dy=by-ay;
+  const len2=dx*dx+dy*dy;
+  if(len2<1) return Math.hypot(px-ax,py-ay)<thresh;
+  const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/len2));
+  const cx=ax+t*dx, cy=ay+t*dy;
+  return Math.hypot(px-cx,py-cy)<thresh;
+}
+
+function checkTrailHits() {
+  const now=state.now;
+  for(const k of state.karts){
+    if(!k.tags.alive || now<k.tags.frozenUntil) continue;
+    for(const other of state.karts){
+      if(!other.tags.alive) continue;
+      const trail=other.tags.fullTrail;
+      const skipEnd = (other===k) ? trail.length : trail.length; // own trail skip recent 15 pts
+      const startI = (other===k) ? Math.max(0, trail.length-60) : 0; // own trail: skip last 60 pts (just behind)
+      const endI   = (other===k) ? Math.max(0, trail.length-60) : trail.length;
+      for(let i=startI+1;i<endI;i++){
+        const a=trail[i-1], b=trail[i];
+        if(pointNearSegment(k.x,k.y,a.x,a.y,b.x,b.y,E.KART_RADIUS+TRAIL_THICK/2)){
+          k.tags.frozenUntil=now+FREEZE_DUR;
+          k.tags.lives--;
+          k.speed=0;
+          if(k.tags.lives<=0){
+            k.tags.alive=false;
+            checkWin();
+          }
+          break;
+        }
+      }
+      if(!k.tags.alive) break;
+    }
+  }
+}
+
+function checkWin(){
+  const alive=state.karts.filter(k=>k.tags.alive);
+  if(alive.length<=1){
+    state.ended=true;
+    const winner=alive[0]||state.karts.reduce((a,b)=>a.tags.lives>b.tags.lives?a:b);
+    document.getElementById('endTitle').textContent=winner.isPlayer?'YOU WIN!':winner?`KART ${winner.id} WINS`:'DRAW';
+    const sorted=[...state.karts].sort((a,b)=>b.tags.lives-a.tags.lives);
+    document.getElementById('endStats').innerHTML=sorted.map((k,i)=>{
+      const sw=`<span style="display:inline-block;width:10px;height:10px;background:${k.color};border-radius:2px;margin-right:8px"></span>`;
+      const st=k.tags.alive?'SURVIVED':k.tags.lives===0?'ELIMINATED':'out';
+      return `<div style="padding:3px 0">${i+1}. ${sw}${k.isPlayer?'YOU':`Kart ${k.id}`} — ${k.tags.lives} lives left (${st})</div>`;
+    }).join('');
+    document.getElementById('endcard').classList.remove('hidden');
+  }
+}
+
+function aiTron(kart) {
+  // Look slightly ahead for trail segments; if danger, steer away; otherwise follow waypoint
+  const wp = E.advanceWaypoint(kart);
+  const base = E.aiInputToward(kart, wp, 0.9);
+  // Simple danger avoidance: rotate steer if trail detected ahead
+  const lookDist = 45;
+  const lx=kart.x+Math.cos(kart.heading)*lookDist;
+  const ly=kart.y+Math.sin(kart.heading)*lookDist;
+  let danger=false;
+  for(const other of state.karts){
+    if(!other.tags.alive) continue;
+    const trail=other.tags.fullTrail;
+    for(let i=1;i<Math.min(trail.length,MAX_TRAIL_SEGMENTS);i++){
+      if(pointNearSegment(lx,ly,trail[i-1].x,trail[i-1].y,trail[i].x,trail[i].y,E.KART_RADIUS*2+TRAIL_THICK)){
+        danger=true; break;
+      }
+    }
+    if(danger) break;
+  }
+  if(danger) base.steer += (Math.random()>0.5?1:-1)*0.7;
+  base.steer=Math.max(-1,Math.min(1,base.steer));
+  return base;
+}
+
+function step(dt){
+  state.now+=dt;
+  for(const k of state.karts){
+    if(!k.tags.alive) continue;
+    const frozen=state.now<k.tags.frozenUntil;
+    const inp=frozen?{throttle:0,steer:0}:(k.isPlayer&&!state.sim)?E.playerInput():aiTron(k);
+    E.stepKart(k,dt,inp);
+    // Append to full trail
+    const t=k.tags.fullTrail;
+    const last=t[t.length-1];
+    if(!last||Math.hypot(k.x-last.x,k.y-last.y)>6){
+      t.push({x:k.x,y:k.y});
+      if(t.length>MAX_TRAIL_SEGMENTS) t.shift();
+    }
+  }
+  E.resolveOverlaps(state.karts.filter(k=>k.tags.alive));
+  checkTrailHits();
+}
+
+function render(){
+  // Deep black with subtle grid
+  ctx.fillStyle='#000408';
+  ctx.fillRect(0,0,E.W,E.H);
+  ctx.strokeStyle='rgba(0,60,80,0.25)'; ctx.lineWidth=1;
+  for(let x=0;x<E.W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,E.H);ctx.stroke();}
+  for(let y=0;y<E.H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(E.W,y);ctx.stroke();}
+
+  // Track (ghost outline only)
+  E.drawTrack(ctx,{fillColor:'rgba(0,20,30,0.4)',wallColor:'rgba(0,180,200,0.15)',showCenter:false,showStartLine:false,wallWidth:2});
+
+  // Persistent trails
+  ctx.lineWidth=TRAIL_THICK; ctx.lineCap='round';
+  for(const k of state.karts){
+    if(!k.tags.alive&&k.tags.lives<=0) continue;
+    const t=k.tags.fullTrail;
+    const pulse=Math.sin(state.now*3)*0.3+0.7;
+    ctx.shadowBlur=12; ctx.shadowColor=k.color;
+    for(let i=1;i<t.length;i++){
+      const a=t[i-1],b=t[i];
+      const f=i/t.length;
+      ctx.strokeStyle=k.color+(Math.floor(f*200).toString(16).padStart(2,'0'));
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+  }
+
+  // Karts
+  for(const k of state.karts){
+    if(!k.tags.alive) continue;
+    const frozen=state.now<k.tags.frozenUntil;
+    const flash=frozen&&Math.floor(state.now*10)%2===0;
+    const body=flash?'#ffffff':k.color;
+    const outline=frozen?'#ffffff':k.color;
+    E.drawKartBase(ctx,k,body,outline,2.5);
+    // Glow
+    ctx.save();
+    E.radialGlow(ctx,k.x,k.y,22,`${k.color}55`,'transparent');
+    ctx.restore();
+  }
+}
+
+function updateHUD(){
+  const alive=state.karts.filter(k=>k.tags.alive).length;
+  document.getElementById('aliveCount').textContent=`ALIVE — ${alive} / ${state.karts.length}`;
+  const me=state.karts[0]; if(!me) return;
+  const frozen=state.now<me.tags.frozenUntil;
+  document.getElementById('statusRow').textContent=
+    !me.tags.alive?'STATUS — ELIMINATED':frozen?`STATUS — FROZEN (${(me.tags.frozenUntil-state.now).toFixed(1)}s)`:'STATUS — ALIVE';
+  document.getElementById('lives').textContent=`LIVES — ${'●'.repeat(me.tags.lives)}${'○'.repeat(Math.max(0,LIVES-me.tags.lives))}`;
+}
+
+let last=performance.now()/1000;
+function loop(){
+  const tNow=performance.now()/1000,dt=Math.min(.05,tNow-last);last=tNow;
+  if(state.running&&!state.paused&&!state.ended) step(dt);
+  if(state.running){render();updateHUD();}
+  else{ctx.fillStyle='#000408';ctx.fillRect(0,0,E.W,E.H);E.drawTrack(ctx,{fillColor:'rgba(0,20,30,0.4)',wallColor:'rgba(0,180,200,0.15)'});}
+  document.getElementById('pauseScrim').style.display=(state.running&&state.paused)?'block':'none';
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k===' '&&state.running){state.paused=!state.paused;e.preventDefault();}
+  if(k==='r') startGame(state.sim);
+  if(k==='s'&&state.running) startGame(!state.sim);
+});
+document.getElementById('playBtn').onclick=()=>startGame(false);
+document.getElementById('simBtn').onclick=()=>startGame(true);
+document.getElementById('replayBtn').onclick=()=>startGame(false);
+document.getElementById('replaySimBtn').onclick=()=>startGame(true);
+
+E.drawTrack(ctx,{fillColor:'rgba(0,20,30,0.4)',wallColor:'rgba(0,180,200,0.15)'}); loop();
+</script>
+</body>
+</html>
