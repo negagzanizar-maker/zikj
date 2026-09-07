@@ -50,10 +50,11 @@ Completed so far:
 
 ## Latest Verification
 
-Git publication preparation on 2026-09-07:
+Git publication verification on 2026-09-07:
 
 - Re-ran the Python suites: tracking 6 passed, projection 8 passed, ops preflight 5 passed (19 total, 0 failures).
 - Fetched `origin` and confirmed local `main` matched `origin/main` before committing the accumulated project work.
+- Pushed project commit `90bf581` to `origin/main`, confirmed the remote branch hash matched local HEAD, and verified a clean working tree before this publication record update.
 - Checked commit candidates for oversized files and common secret patterns; none found. Largest file is approximately 3.5 MB.
 - `git diff --check` reported trailing whitespace in Unity-generated scene serialization; retained generated scene content as-is.
 - Unity tests and Windows builds were not re-run for this publication task; the results below are historical.
@@ -136,7 +137,7 @@ Every future work session should do this:
 
 ## Recent Change Log
 
-- 2026-09-07: Prepared the accumulated Unity modes, real 3D assets, projected maps, tracking/projection/operator tools, validation artifacts, and documentation for commit and publication to `origin/main`. All 19 Python tests passed. Existing ignore rules keep local builds and caches out of Git. Physical venue validation remains pending; remote publication must be verified after the push.
+- 2026-09-07: Committed and pushed the accumulated Unity modes, real 3D assets, projected maps, tracking/projection/operator tools, validation artifacts, and documentation to `origin/main` as `90bf581`; remote publication verified. All 19 Python tests passed. Existing ignore rules keep local builds and caches out of Git. Physical venue validation remains pending.
 - 2026-06-03: Opened the Windows venue launcher for a visible local simulation run; no code changes were made and remaining physical venue validation blockers are unchanged.
 - 2026-05-31: Added BattleKart-inspired projected map layer to gameplay scenes, regenerated scenes, passed Unity smoke tests, passed PlayMode tests, rebuilt all Windows deployables, and launched `ZIKJ-GrandPrix.exe` for a visible manual check.
 - 2026-05-31: Launched `ZIKJ-VenueLauncher.exe` from the Windows build folder for a visible manual run check.
