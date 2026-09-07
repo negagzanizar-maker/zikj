@@ -1,0 +1,402 @@
+[
+  {
+    "world": [
+      0.0,
+      0.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P0",
+        "projector_name": "Front Left",
+        "pixel": [
+          0.0,
+          0.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      320.0,
+      0.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P0",
+        "projector_name": "Front Left",
+        "pixel": [
+          853.3333333333333,
+          0.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      640.0,
+      0.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P0",
+        "projector_name": "Front Left",
+        "pixel": [
+          1706.6666666666665,
+          0.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 0.5
+      },
+      {
+        "projector_id": "P1",
+        "projector_name": "Front Right",
+        "pixel": [
+          213.33333333333326,
+          0.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 0.5
+      }
+    ]
+  },
+  {
+    "world": [
+      960.0,
+      0.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P1",
+        "projector_name": "Front Right",
+        "pixel": [
+          1066.6666666666667,
+          0.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      1280.0,
+      0.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P1",
+        "projector_name": "Front Right",
+        "pixel": [
+          1919.9999999999998,
+          0.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      0.0,
+      240.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P0",
+        "projector_name": "Front Left",
+        "pixel": [
+          0.0,
+          648.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      320.0,
+      240.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P0",
+        "projector_name": "Front Left",
+        "pixel": [
+          853.3333333333333,
+          648.0
+        ],
+        "raw_weight": 1.0,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      640.0,
+      240.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P0",
+        "projector_name": "Front Left",
+        "pixel": [
+          1706.6666666666665,
+          648.0
+        ],
+        "raw_weight": 1.0,
+        "weight": 0.5
+      },
+      {
+        "projector_id": "P1",
+        "projector_name": "Front Right",
+        "pixel": [
+          213.33333333333326,
+          648.0
+        ],
+        "raw_weight": 1.0,
+        "weight": 0.5
+      }
+    ]
+  },
+  {
+    "world": [
+      960.0,
+      240.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P1",
+        "projector_name": "Front Right",
+        "pixel": [
+          1066.6666666666667,
+          648.0
+        ],
+        "raw_weight": 1.0,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      1280.0,
+      240.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P1",
+        "projector_name": "Front Right",
+        "pixel": [
+          1919.9999999999998,
+          648.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      0.0,
+      480.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P2",
+        "projector_name": "Rear Left",
+        "pixel": [
+          0.0,
+          431.9999999999999
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      320.0,
+      480.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P2",
+        "projector_name": "Rear Left",
+        "pixel": [
+          853.3333333333333,
+          431.9999999999999
+        ],
+        "raw_weight": 1.0,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      640.0,
+      480.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P2",
+        "projector_name": "Rear Left",
+        "pixel": [
+          1706.6666666666665,
+          431.9999999999999
+        ],
+        "raw_weight": 1.0,
+        "weight": 0.5
+      },
+      {
+        "projector_id": "P3",
+        "projector_name": "Rear Right",
+        "pixel": [
+          213.33333333333348,
+          431.9999999999998
+        ],
+        "raw_weight": 1.0,
+        "weight": 0.5
+      }
+    ]
+  },
+  {
+    "world": [
+      960.0,
+      480.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P3",
+        "projector_name": "Rear Right",
+        "pixel": [
+          1066.6666666666667,
+          431.9999999999998
+        ],
+        "raw_weight": 1.0,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      1280.0,
+      480.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P3",
+        "projector_name": "Rear Right",
+        "pixel": [
+          1919.9999999999998,
+          431.99999999999966
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      0.0,
+      720.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P2",
+        "projector_name": "Rear Left",
+        "pixel": [
+          0.0,
+          1080.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      320.0,
+      720.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P2",
+        "projector_name": "Rear Left",
+        "pixel": [
+          853.3333333333333,
+          1080.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      640.0,
+      720.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P2",
+        "projector_name": "Rear Left",
+        "pixel": [
+          1706.6666666666665,
+          1080.0
+        ],
+        "raw_weight": 0.001,
+        "weight": 0.5
+      },
+      {
+        "projector_id": "P3",
+        "projector_name": "Rear Right",
+        "pixel": [
+          213.33333333333326,
+          1079.9999999999998
+        ],
+        "raw_weight": 0.001,
+        "weight": 0.5
+      }
+    ]
+  },
+  {
+    "world": [
+      960.0,
+      720.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P3",
+        "projector_name": "Rear Right",
+        "pixel": [
+          1066.6666666666667,
+          1079.9999999999998
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  },
+  {
+    "world": [
+      1280.0,
+      720.0
+    ],
+    "projectors": [
+      {
+        "projector_id": "P3",
+        "projector_name": "Rear Right",
+        "pixel": [
+          1920.0000000000002,
+          1079.9999999999998
+        ],
+        "raw_weight": 0.001,
+        "weight": 1.0
+      }
+    ]
+  }
+]

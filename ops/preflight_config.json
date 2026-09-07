@@ -1,0 +1,39 @@
+{
+  "unity": {
+    "build_dir": "unity/Builds/Windows",
+    "required_players": [
+      "ZIKJ-Infected.exe",
+      "ZIKJ-BattleRoyale.exe",
+      "ZIKJ-GrandPrix.exe",
+      "ZIKJ-DriftArena.exe",
+      "ZIKJ-TronTrails.exe",
+      "ZIKJ-LastOneLit.exe",
+      "ZIKJ-ProjectionAlignment.exe",
+      "ZIKJ-VenueLauncher.exe"
+    ],
+    "disallowed_player_assemblies": [
+      "ZIKJ.PlayMode.Tests.dll"
+    ]
+  },
+  "tracking": {
+    "config": "tracking/tracking_config.json",
+    "markers_dir": "tracking/markers",
+    "marker_count": 6,
+    "marker_sheet": "tracking/markers_sheet.png",
+    "unity_udp_port": 5555
+  },
+  "projection": {
+    "config": "projection/projection_config.json",
+    "alignment_grid": "projection/alignment_grid.json",
+    "world_width": 1280,
+    "world_height": 720
+  },
+  "hardware_signoffs": {
+    "emergency_stop_hardwired": false,
+    "independent_speed_governor": false,
+    "operator_start_stop_controls": false,
+    "staff_race_control_flow": false,
+    "safety_checklist_completed": false,
+    "controlled_speed_playtest_completed": false
+  }
+}

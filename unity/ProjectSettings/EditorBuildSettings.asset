@@ -6,7 +6,28 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/VenueLauncher.unity
+    guid: afee33b4e38194a4b911fa14a33a7260
+  - enabled: 1
     path: Assets/Scenes/InfectedArena.unity
     guid: 1f1570ac1c4e30a45952e26da7f953fe
+  - enabled: 1
+    path: Assets/Scenes/BattleRoyaleArena.unity
+    guid: 3bad3f58719c6cf4eb3d024fb8d6a247
+  - enabled: 1
+    path: Assets/Scenes/GrandPrixArena.unity
+    guid: 37f3bb78bb9417445868c4c7590f108a
+  - enabled: 1
+    path: Assets/Scenes/DriftArena.unity
+    guid: 26dcaec68f5fe494385a2cedb7b0595b
+  - enabled: 1
+    path: Assets/Scenes/TronTrails.unity
+    guid: 50bdb9bbe68c1d64ab8e16510e9cc323
+  - enabled: 1
+    path: Assets/Scenes/LastOneLit.unity
+    guid: efbd46740b1dc69499ef90cc4e7fb701
+  - enabled: 1
+    path: Assets/Scenes/ProjectionAlignment.unity
+    guid: 9d957c66e1c074747b673b270d51441e
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0

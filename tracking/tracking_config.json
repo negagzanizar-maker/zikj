@@ -1,0 +1,61 @@
+{
+  "tracking": {
+    "fps": 60,
+    "max_latency_ms": 100,
+    "debug": false
+  },
+  "cameras": [
+    {
+      "id": 0,
+      "url": "rtsp://192.168.1.101:554/stream",
+      "fps": 120,
+      "timeout": 5.0,
+      "resolution": [1920, 1080]
+    },
+    {
+      "id": 1,
+      "url": "rtsp://192.168.1.102:554/stream",
+      "fps": 120,
+      "timeout": 5.0,
+      "resolution": [1920, 1080]
+    }
+  ],
+  "aruco": {
+    "dictionary": "5X5_250",
+    "marker_size_mm": 100
+  },
+  "calibration": {
+    "camera_0": {
+      "scale_x": 0.25,
+      "scale_y": 0.25,
+      "offset_x": 0,
+      "offset_y": 0,
+      "rotation_rad": 0.0
+    },
+    "camera_1": {
+      "scale_x": 0.25,
+      "scale_y": 0.25,
+      "offset_x": 1280,
+      "offset_y": 0,
+      "rotation_rad": 0.0
+    }
+  },
+  "kart_mapping": {
+    "0": "Blue",
+    "1": "Yellow",
+    "2": "Pink",
+    "3": "Green",
+    "4": "Purple",
+    "5": "Orange"
+  },
+  "unity": {
+    "host": "127.0.0.1",
+    "port": 5555,
+    "protocol": "udp"
+  },
+  "venue": {
+    "track_width": 1280,
+    "track_height": 720,
+    "name": "ZIKJ Karting Arena"
+  }
+}

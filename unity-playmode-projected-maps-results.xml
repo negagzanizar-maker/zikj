@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="14" result="Passed" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-05-31 11:37:50Z" end-time="2026-05-31 11:38:04Z" duration="13,7266989">
+  <test-suite type="TestSuite" id="1018" name="unity" fullname="unity" runstate="Runnable" testcasecount="14" result="Passed" start-time="2026-05-31 11:37:50Z" end-time="2026-05-31 11:38:04Z" duration="13.726699" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1017" name="ZIKJ.PlayMode.Tests.dll" fullname="C:/Users/Admin/Desktop/zikj/unity/Library/ScriptAssemblies/ZIKJ.PlayMode.Tests.dll" runstate="Runnable" testcasecount="14" result="Passed" start-time="2026-05-31 11:37:50Z" end-time="2026-05-31 11:38:04Z" duration="13.698587" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="27460" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1002" name="ZIKJModeRuntimeTests" fullname="ZIKJModeRuntimeTests" classname="ZIKJModeRuntimeTests" runstate="Runnable" testcasecount="14" result="Passed" start-time="2026-05-31 11:37:50Z" end-time="2026-05-31 11:38:04Z" duration="13.693665" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1004" name="BattleRoyale_RuntimeSmoke" fullname="ZIKJModeRuntimeTests.BattleRoyale_RuntimeSmoke" methodname="BattleRoyale_RuntimeSmoke" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="225332477" result="Passed" start-time="2026-05-31 11:37:50Z" end-time="2026-05-31 11:37:53Z" duration="2.565090" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :5555
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1006" name="DriftArena_RuntimeSmoke" fullname="ZIKJModeRuntimeTests.DriftArena_RuntimeSmoke" methodname="DriftArena_RuntimeSmoke" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="2023963560" result="Passed" start-time="2026-05-31 11:37:53Z" end-time="2026-05-31 11:37:55Z" duration="2.021364" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :5555
+[Performance] Frame skip detected: 166,7ms (threshold: 20ms)
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1005" name="GrandPrix_RuntimeSmoke" fullname="ZIKJModeRuntimeTests.GrandPrix_RuntimeSmoke" methodname="GrandPrix_RuntimeSmoke" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="1682139902" result="Passed" start-time="2026-05-31 11:37:55Z" end-time="2026-05-31 11:37:57Z" duration="2.040398" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :5555
+[Performance] Frame skip detected: 216,5ms (threshold: 20ms)
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1003" name="Infected_RuntimeSmoke" fullname="ZIKJModeRuntimeTests.Infected_RuntimeSmoke" methodname="Infected_RuntimeSmoke" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="1423809624" result="Passed" start-time="2026-05-31 11:37:57Z" end-time="2026-05-31 11:37:59Z" duration="1.973570" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :5555
+[Performance] Frame skip detected: 146,2ms (threshold: 20ms)
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1008" name="LastOneLit_RuntimeSmoke" fullname="ZIKJModeRuntimeTests.LastOneLit_RuntimeSmoke" methodname="LastOneLit_RuntimeSmoke" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="317645503" result="Passed" start-time="2026-05-31 11:37:59Z" end-time="2026-05-31 11:38:01Z" duration="1.917592" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :5555
+[Performance] Frame skip detected: 98,0ms (threshold: 20ms)
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1010" name="ProjectionAlignment_RuntimeSmoke" fullname="ZIKJModeRuntimeTests.ProjectionAlignment_RuntimeSmoke" methodname="ProjectionAlignment_RuntimeSmoke" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="615651626" result="Passed" start-time="2026-05-31 11:38:01Z" end-time="2026-05-31 11:38:01Z" duration="0.055946" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :5555
+[Performance] Frame skip detected: 41,6ms (threshold: 20ms)
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1012" name="TrackingDefaultPort5555MovesRegisteredKart" fullname="ZIKJModeRuntimeTests.TrackingDefaultPort5555MovesRegisteredKart" methodname="TrackingDefaultPort5555MovesRegisteredKart" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="427402325" result="Passed" start-time="2026-05-31 11:38:01Z" end-time="2026-05-31 11:38:01Z" duration="0.039461" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :5555
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1013" name="TrackingFirstFrameTakesOverAiFallbackKart" fullname="ZIKJModeRuntimeTests.TrackingFirstFrameTakesOverAiFallbackKart" methodname="TrackingFirstFrameTakesOverAiFallbackKart" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="263583026" result="Passed" start-time="2026-05-31 11:38:01Z" end-time="2026-05-31 11:38:01Z" duration="0.032963" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :58869
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1014" name="TrackingInterpolationAppliesFreshFrame" fullname="ZIKJModeRuntimeTests.TrackingInterpolationAppliesFreshFrame" methodname="TrackingInterpolationAppliesFreshFrame" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="1601254872" result="Passed" start-time="2026-05-31 11:38:01Z" end-time="2026-05-31 11:38:02Z" duration="0.719792" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :58871
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1016" name="TrackingModeSuppressesAiAndPhysicsDrift" fullname="ZIKJModeRuntimeTests.TrackingModeSuppressesAiAndPhysicsDrift" methodname="TrackingModeSuppressesAiAndPhysicsDrift" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="1887153261" result="Passed" start-time="2026-05-31 11:38:02Z" end-time="2026-05-31 11:38:02Z" duration="0.017151" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1011" name="TrackingSimulatorPacketMovesRegisteredKart" fullname="ZIKJModeRuntimeTests.TrackingSimulatorPacketMovesRegisteredKart" methodname="TrackingSimulatorPacketMovesRegisteredKart" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="337625275" result="Passed" start-time="2026-05-31 11:38:02Z" end-time="2026-05-31 11:38:02Z" duration="0.041854" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :54141
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1015" name="TrackingTimeoutStopsStaleRegisteredKart" fullname="ZIKJModeRuntimeTests.TrackingTimeoutStopsStaleRegisteredKart" methodname="TrackingTimeoutStopsStaleRegisteredKart" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="423067666" result="Passed" start-time="2026-05-31 11:38:02Z" end-time="2026-05-31 11:38:02Z" duration="0.212882" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :54143
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1007" name="TronTrails_RuntimeSmoke" fullname="ZIKJModeRuntimeTests.TronTrails_RuntimeSmoke" methodname="TronTrails_RuntimeSmoke" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="2129641496" result="Passed" start-time="2026-05-31 11:38:02Z" end-time="2026-05-31 11:38:04Z" duration="1.938895" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Tracking] Listening on UDP :5555
+[Performance] Frame skip detected: 128,4ms (threshold: 20ms)
+[Tracking] Stopped listening.
+[Tracking] Stopped listening.
+]]></output>
+        </test-case>
+        <test-case id="1009" name="VenueLauncher_RuntimeSmoke" fullname="ZIKJModeRuntimeTests.VenueLauncher_RuntimeSmoke" methodname="VenueLauncher_RuntimeSmoke" classname="ZIKJModeRuntimeTests" runstate="Runnable" seed="16544290" result="Passed" start-time="2026-05-31 11:38:04Z" end-time="2026-05-31 11:38:04Z" duration="0.069805" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[Saving results to: C:\Users\Admin\Desktop\zikj\unity-playmode-projected-maps-results.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

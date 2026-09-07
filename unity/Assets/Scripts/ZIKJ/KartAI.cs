@@ -26,7 +26,13 @@ public class KartAI : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (kart == null || kart.isPlayer) return;
+        if (kart == null || kart.isPlayer || !kart.controlsEnabled) return;
+        if (kart.trackingMode)
+        {
+            kart.throttleInput = 0f;
+            kart.steerInput = 0f;
+            return;
+        }
 
         switch (behaviour)
         {

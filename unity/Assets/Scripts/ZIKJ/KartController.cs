@@ -23,6 +23,9 @@ public class KartController : MonoBehaviour
     [HideInInspector] public float steerMul = 1f;
     [HideInInspector] public float throttleInput;
     [HideInInspector] public float steerInput;
+    [HideInInspector] public bool actionInput;
+    [HideInInspector] public bool controlsEnabled = true;
+    [HideInInspector] public bool trackingMode = false;
 
     Rigidbody rb;
     Renderer[] renderers;
@@ -37,7 +40,22 @@ public class KartController : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (isPlayer) ReadPlayerInput();
+        if (!controlsEnabled)
+        {
+            StopImmediately();
+            return;
+        }
+
+        if (trackingMode && !isPlayer)
+        {
+            throttleInput = 0f;
+            steerInput = 0f;
+            actionInput = false;
+            angVel = 0f;
+            return;
+        }
+
+        if (isPlayer && !trackingMode) ReadPlayerInput();
 
         float dt = Time.fixedDeltaTime;
         float th = Mathf.Clamp(throttleInput, -1f, 1f);
@@ -81,16 +99,21 @@ public class KartController : MonoBehaviour
 
         if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) throttle += 1f;
         if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) throttle -= 1f;
-        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) steer -= 1f;
-        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) steer += 1f;
+        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) steer += 1f;
+        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) steer -= 1f;
 
         throttleInput = throttle;
         steerInput = steer;
+        actionInput = Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.RightControl);
     }
 
     public void Teleport(Vector3 position, float h)
     {
         if (rb == null) rb = GetComponent<Rigidbody>();
+
+        // Clamp position to track if available (safety against bad tracking data)
+        if (WaypointCircuit.I != null)
+            position = WaypointCircuit.I.ClampToTrack(position);
 
         heading = h;
         speed = 0f;
@@ -116,8 +139,10 @@ public class KartController : MonoBehaviour
     public void StopImmediately()
     {
         speed = 0f;
+        angVel = 0f;
         throttleInput = 0f;
         steerInput = 0f;
+        actionInput = false;
     }
 
     public void SetVisualColor(Color color)
@@ -128,8 +153,35 @@ public class KartController : MonoBehaviour
         {
             if (rend == null) continue;
 
-            if (rend.material != null)
-                rend.material.color = color;
+            if (rend.gameObject.name.Contains("Aura") || rend.gameObject.name.Contains("Shield"))
+                continue;
+
+            if (rend.gameObject.name.Contains("Rim"))
+            {
+                SetRendererColor(rend, new Color(0.62f, 0.64f, 0.68f));
+                continue;
+            }
+
+            if (rend.gameObject.name.Contains("Wheel"))
+            {
+                SetRendererColor(rend, new Color(0.012f, 0.012f, 0.016f));
+                continue;
+            }
+
+            if (rend.gameObject.name.Contains("Cockpit"))
+            {
+                SetRendererColor(rend, new Color(0.04f, 0.18f, 0.28f));
+                continue;
+            }
+
+            SetRendererColor(rend, color);
         }
+    }
+
+    static void SetRendererColor(Renderer renderer, Color color)
+    {
+        Material material = Application.isPlaying ? renderer.material : renderer.sharedMaterial;
+        if (material != null)
+            material.color = color;
     }
 }

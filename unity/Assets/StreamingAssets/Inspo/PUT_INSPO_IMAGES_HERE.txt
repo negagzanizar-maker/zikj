@@ -1,0 +1,12 @@
+Drop your scene inspiration images in this folder as .png, .jpg, or .jpeg files.
+
+Use this folder as the Unity-side place for scene reference images.
+
+Good filenames:
+- neon-garage-entry.jpg
+- track-floor-pattern.png
+- mario-kart-rainbow-road.jpeg
+- cyberpunk-arcade-wall.png
+
+After adding images, tell Codex which mode each image belongs to so the Unity
+scene dressing can be updated around those references.

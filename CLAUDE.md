@@ -1,5 +1,9 @@
 # ZIKJ — Mixed-Reality Karting Prototype
 
+## Current Reality Override
+
+This repo has moved beyond the original Phase 1-only note below. It now includes six playable Unity modes, per-mode Windows build commands, local tracking simulator support, and generated Unity scenes/builds under `unity/`.
+
 ## What This Project Is
 
 A next-generation entertainment venue combining real electric karts, projection mapping, and video-game mechanics (Mario Kart-style). The floor of the karting track is projection-mapped with real-time visuals synced to kart positions tracked by overhead cameras.

@@ -12,7 +12,7 @@ public class TrackMeshBuilder : MonoBehaviour
 
     void Start() => Build();
 
-    void Build()
+    public void Build()
     {
         const float HW = WaypointCircuit.HalfWidth;
 

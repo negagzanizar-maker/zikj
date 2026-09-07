@@ -84,6 +84,7 @@ public class InfectedMode : MonoBehaviour
             kart.maxSpeedMul = 1f;
             kart.steerMul = 1f;
             kart.SetVisualColor(kart.kartColor);
+            kart.GetComponent<KartVisualEffects>()?.SetState(false, false);
         }
 
         int patientZero = Random.Range(0, karts.Length);
@@ -130,11 +131,20 @@ public class InfectedMode : MonoBehaviour
             kart.maxSpeedMul = now < state.boostUntil ? boostFactor : 1f;
 
             if (state.infected)
+            {
                 kart.SetVisualColor(new Color(1f, 0.12f, 0.18f));
+                kart.GetComponent<KartVisualEffects>()?.SetState(true, false);
+            }
             else if (now < state.immuneUntil)
+            {
                 kart.SetVisualColor(new Color(0.30f, 1f, 0.55f));
+                kart.GetComponent<KartVisualEffects>()?.SetState(false, true);
+            }
             else
+            {
                 kart.SetVisualColor(kart.kartColor);
+                kart.GetComponent<KartVisualEffects>()?.SetState(false, false);
+            }
         }
     }
 
@@ -228,16 +238,56 @@ public class InfectedMode : MonoBehaviour
         root.AddComponent<SphereCollider>();
 
         var visual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        visual.name = "Visual";
+        visual.name = "Safe Zone Ring";
         visual.transform.SetParent(root.transform, false);
-        visual.transform.localScale = new Vector3(zoneRadius * 2f, 0.03f, zoneRadius * 2f);
+        visual.transform.localPosition = new Vector3(0f, 0.05f, 0f);
+        visual.transform.localScale = new Vector3(zoneRadius * 2.2f, 0.04f, zoneRadius * 2.2f);
 
         var collider = visual.GetComponent<Collider>();
-        if (collider != null) Destroy(collider);
+        if (collider != null) UnityObjectUtil.Destroy(collider);
 
         var renderer = visual.GetComponent<Renderer>();
         if (renderer != null)
-            renderer.material = RuntimeMaterials.Make(new Color(0.20f, 1f, 0.45f, 0.8f));
+            renderer.material = RuntimeMaterials.Emissive(new Color(0.10f, 1f, 0.42f), new Color(0.08f, 1f, 0.35f), 2.4f);
+
+        var pillar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        pillar.name = "Safe Zone Beacon";
+        pillar.transform.SetParent(root.transform, false);
+        pillar.transform.localPosition = new Vector3(0f, 1.35f, 0f);
+        pillar.transform.localScale = new Vector3(0.22f, 1.35f, 0.22f);
+
+        var pillarCollider = pillar.GetComponent<Collider>();
+        if (pillarCollider != null) UnityObjectUtil.Destroy(pillarCollider);
+
+        var pillarRenderer = pillar.GetComponent<Renderer>();
+        if (pillarRenderer != null)
+            pillarRenderer.material = RuntimeMaterials.Emissive(new Color(0.06f, 0.8f, 0.32f), new Color(0.02f, 1f, 0.45f), 3f);
+
+        var crown = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        crown.name = "Safe Zone Crown";
+        crown.transform.SetParent(root.transform, false);
+        crown.transform.localPosition = new Vector3(0f, 2.8f, 0f);
+        crown.transform.localScale = Vector3.one * 0.75f;
+
+        var crownCollider = crown.GetComponent<Collider>();
+        if (crownCollider != null) UnityObjectUtil.Destroy(crownCollider);
+
+        var crownRenderer = crown.GetComponent<Renderer>();
+        if (crownRenderer != null)
+            crownRenderer.material = RuntimeMaterials.Emissive(new Color(0.12f, 1f, 0.5f), new Color(0.08f, 1f, 0.45f), 3.4f);
+
+        var lightGo = new GameObject("Safe Zone Light");
+        lightGo.transform.SetParent(root.transform, false);
+        lightGo.transform.localPosition = new Vector3(0f, 2.4f, 0f);
+
+        var light = lightGo.AddComponent<Light>();
+        light.type = LightType.Point;
+        light.color = new Color(0.08f, 1f, 0.36f);
+        light.range = 8f;
+        light.intensity = 2.8f;
+        light.shadows = LightShadows.None;
+
+        root.AddComponent<SafeZoneVisual>();
 
         return root;
     }
@@ -251,7 +301,7 @@ public class InfectedMode : MonoBehaviour
     {
         for (int i = zones.Count - 1; i >= 0; i--)
         {
-            if (zones[i] != null) Destroy(zones[i]);
+            if (zones[i] != null) UnityObjectUtil.Destroy(zones[i]);
         }
 
         zones.Clear();

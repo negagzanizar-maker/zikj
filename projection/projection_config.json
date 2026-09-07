@@ -1,0 +1,39 @@
+{
+  "world": {
+    "width": 1280,
+    "height": 720,
+    "coordinate_system": "prototype_pixels"
+  },
+  "projector_resolution": [1920, 1080],
+  "blend_px": 80,
+  "projectors": [
+    {
+      "id": "P0",
+      "name": "Front Left",
+      "enabled": true,
+      "source_quad": [[0, 0], [720, 0], [720, 400], [0, 400]],
+      "projector_quad": [[0, 0], [1920, 0], [1920, 1080], [0, 1080]]
+    },
+    {
+      "id": "P1",
+      "name": "Front Right",
+      "enabled": true,
+      "source_quad": [[560, 0], [1280, 0], [1280, 400], [560, 400]],
+      "projector_quad": [[0, 0], [1920, 0], [1920, 1080], [0, 1080]]
+    },
+    {
+      "id": "P2",
+      "name": "Rear Left",
+      "enabled": true,
+      "source_quad": [[0, 320], [720, 320], [720, 720], [0, 720]],
+      "projector_quad": [[0, 0], [1920, 0], [1920, 1080], [0, 1080]]
+    },
+    {
+      "id": "P3",
+      "name": "Rear Right",
+      "enabled": true,
+      "source_quad": [[560, 320], [1280, 320], [1280, 720], [560, 720]],
+      "projector_quad": [[0, 0], [1920, 0], [1920, 1080], [0, 1080]]
+    }
+  ]
+}

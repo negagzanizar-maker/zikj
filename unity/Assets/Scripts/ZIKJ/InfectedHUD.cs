@@ -32,7 +32,7 @@ public class InfectedHUD : MonoBehaviour
     void Start()
     {
         if (resultPanel != null) resultPanel.SetActive(false);
-        if (helpText != null) helpText.text = "WASD / ARROWS - DRIVE";
+        if (helpText != null) helpText.text = "WASD DRIVE | C/V CAM | 1-7 VIEWS";
     }
 
     void Update()

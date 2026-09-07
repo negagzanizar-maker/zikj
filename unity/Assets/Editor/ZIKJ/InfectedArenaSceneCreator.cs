@@ -19,7 +19,9 @@ public static class InfectedArenaSceneCreator
         scene.name = "InfectedArena";
 
         var bootstrap = new GameObject("Bootstrap");
-        bootstrap.AddComponent<InfectedSceneBootstrap>();
+        var bootstrapper = bootstrap.AddComponent<InfectedSceneBootstrap>();
+        bootstrapper.BuildScene();
+        ZIKJReal3DSceneAssets.ApplyToGameScene(GameManager.GameMode.Infected);
 
         EditorSceneManager.SaveScene(scene, ScenePath);
         EditorBuildSettings.scenes = new[]

@@ -9,6 +9,8 @@ Desktop.ini
 
 # Logs and temporary files
 *.log
+unity-playmode-results*.xml
+__pycache__/
 tmp/
 temp/
 .cache/
@@ -35,6 +37,7 @@ coverage/
 
 # Unity generated files
 *.csproj
+*.csproj.lscache
 *.sln
 *.slnx
 *.suo
